@@ -1,4 +1,4 @@
-# StockX Pro: AI-Driven Financial Simulation & Optimization System
+# StockX Pro: 金融交易仿真系统及RAG投顾助手
 
 [![Python Version](https://img.shields.io/badge/python-3.14.2-blue)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/framework-Django%205.0-green)](https://www.djangoproject.com/)
