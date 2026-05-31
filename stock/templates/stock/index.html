@@ -1,283 +1,327 @@
 {% extends "stock/base.html" %}
 {% load static %}
-{% block body %}
-<!-- 添加顶部横幅 -->
-<div class="container-fluid py-2 bg-dark text-white" style="background: rgba(0, 0, 0, 0.6);">
-  <div class="d-flex justify-content-between align-items-center" style="padding-top: 50px;">
-    <h5 class="mb-0"><i class="bi bi-coin me-2"></i> StockX Pro</h5>
-    <div class="d-flex align-items-center" >
-      <span class="badge bg-success me-2">LIVE</span>
-      <span class="small">专业金融交易平台</span>
-    </div>
-  </div>
-</div>
-<div class="banner-container">
-  <img src="{% static 'img/backgrounds/background-finance-1.png' %}" 
-       alt="StockX Pro Trading Dashboard"
-       class="banner-img">
-</div>
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 bg-dark text-white p-3 rounded shadow-sm">
-        <div>
-            <span class="badge bg-primary me-2">LIVE</span>
-            <span class="text-uppercase fw-bold letter-spacing-1">当前模拟交易日：</span>
-            <span class="fs-4 fw-bold text-warning" id="virtual-clock">{{ sim.current_virtual_date|date:"Y-m-d" }}</span>
-        </div>
-        <div class="d-flex align-items-center">
-            <span class="me-3 text-muted">状态：<span class="text-success">● 交易系统中</span></span>
-            <form action="{% url 'advance_date' %}" method="post" class="m-0">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-warning btn-sm fw-bold">
-                    <i class="bi bi-skip-forward-fill"></i> 进入下一交易日
-                </button>
-            </form>
-        </div>
-    </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card card-highlight border-0 shadow-sm p-3 text-dark">
-                <small class="opacity-75 fw-bold">账户总资产 </small>
-                <h3 class="mb-0 fw-bold">${{ total_nav|floatformat:2 }}</h3>
-                <div class="progress mt-2" style="height: 4px; background: rgba(255,255,255,0.2);">
-                    <div class="progress-bar bg-white" style="width: 70%"></div>
-                </div>
+{% block title %}交易终端 — StockX Pro{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    {# ========== 模拟信息栏 ========== #}
+    <div class="sim-info-bar">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <span class="sim-label">当前模拟交易日</span>
+                <span class="sim-date">{{ sim.current_virtual_date|date:"Y年m月d日" }}</span>
+                <span class="badge badge-market {% if sim.is_market_open %}open{% else %}closed{% endif %}">
+                    {% if sim.is_market_open %}● 交易中{% else %}○ 已收盘{% endif %}
+                </span>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <small class="text-muted fw-bold text-uppercase">可用余额</small>
-                <h3 class="mb-0 text-dark">${{ sim.available_cash|floatformat:2 }}</h3>
-                <small class="text-muted">可即时购买股票</small>
+            <div class="col-md-4 text-center">
+                <span class="sim-label">可用资金</span>
+                <span class="sim-cash">¥ {{ sim.available_cash|floatformat:2 }}</span>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <small class="text-muted fw-bold text-uppercase">冻结资金</small>
-                <h3 class="mb-0 text-warning">${{ sim.frozen_cash|floatformat:2 }}</h3>
-                <small class="text-muted">等待撮合的委托单</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <small class="text-muted fw-bold text-uppercase">当前总盈亏</small>
-                <h3 class="mb-0 {% if total_profit >= 0 %}text-danger{% else %}text-success{% endif %}">
-                    {{ total_profit|floatformat:2 }} 
-                    <small class="fs-6">({{ profit_rate }}%)</small>
-                </h3>
+            <div class="col-md-4 text-end">
+                <span class="sim-label">账户净值</span>
+                <span class="sim-nav" id="navDisplay">¥ {{ sim.get_nav|floatformat:2 }}</span>
             </div>
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>资产值走势</h5>
+    {# ========== 资产走势图 ========== #}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card chart-card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">📊 账户净值走势 (NAV)</h3>
                 </div>
                 <div class="card-body">
-                    <div style="height: 300px;">
+                    <div class="chart-container">
                         <canvas id="performanceChart"></canvas>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-search text-info me-2"></i>市场探索</h5>
-                    
-                    <div class="d-flex align-items-center">
-                        <div class="dropdown me-2">
-                            <button class="btn btn-sm btn-outline-primary dropdown-toggle fw-bold" type="button" id="industryDropdown" data-bs-toggle="dropdown">
-                                <i class="bi bi-filter-circle me-1"></i> 选择行业
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow" style="max-height: 300px; overflow-y: auto;">
-                                <li><a class="dropdown-item" href="{% url 'index' %}">全部行业</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                {% for ind in industries %}
-                                <li>
-                                    <a class="dropdown-item {% if current_industry == ind.id|stringformat:'s' %}active{% endif %}" href="?industry={{ ind.id }}">
+    {# ========== 市场探索器 + AI 投顾 ========== #}
+    <div class="row">
+        {# 左侧：市场行情 #}
+        <div class="col-lg-8">
+            <div class="card market-card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">🔍 市场行情</h3>
+                    <div class="card-header-actions">
+                        <form method="GET" class="search-form-inline">
+                            <div class="input-group">
+                                <input type="text" name="q" class="form-control"
+                                       placeholder="搜索股票代码或名称..."
+                                       value="{{ request.GET.q }}">
+                                <select name="industry" class="form-select" style="max-width:140px;">
+                                    <option value="">全部行业</option>
+                                    {% for ind in industries %}
+                                    <option value="{{ ind.id }}" {% if current_industry == ind.id|stringformat:"s" %}selected{% endif %}>
                                         {{ ind.name }}
-                                    </a>
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        <span class="badge bg-light text-dark border">
-                            {% if current_industry %} 筛选中 {% else %} 今日活跃 {% endif %}
-                        </span>
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-primary-custom" type="submit">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
+                    <table class="table stockx-table">
+                        <thead>
                             <tr>
-                                <th>证券代码</th>
-                                <th>公司名称</th>
-                                <th class="text-danger">卖一价</th>
-                                <th class="text-success">买一价</th>
-                                <th>最新成交</th>
-                                <th>操作</th>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>最新价</th>
+                                <th>最高</th>
+                                <th>最低</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for stock in popular_stocks %}
                             <tr>
-                                <td><span class="badge bg-secondary">{{ stock.symbol }}</span></td>
-                                <td class="fw-bold">{{ stock.name }}</td>
-                                <td class="text-danger fw-bold">${{ stock.best_ask|default:stock.price|floatformat:2 }}</td>
-                                <td class="text-success fw-bold">${{ stock.best_bid|default:stock.price|floatformat:2 }}</td>
-                                <td class="text-primary fw-bold">${{ stock.price|floatformat:2 }}</td>
+                                <td><span class="symbol-badge">{{ stock.symbol }}</span></td>
+                                <td><strong>{{ stock.name }}</strong></td>
+                                <td class="price-cell">¥ {{ stock.price|floatformat:2 }}</td>
+                                <td class="text-success">¥ {{ stock.best_ask|floatformat:2 }}</td>
+                                <td class="text-danger">¥ {{ stock.best_bid|floatformat:2 }}</td>
                                 <td>
-                                    <a href="{% url 'stock_detail' stock.symbol %}" class="btn btn-sm btn-outline-primary">
-                                        查看详情 / 交易
+                                    <a href="{% url 'stock_detail' stock.symbol %}" class="btn btn-sm btn-outline-custom">
+                                        详情 <i class="bi bi-chevron-right"></i>
                                     </a>
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="6" class="text-center py-4 text-muted">未找到相关数据。</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">暂无股票数据，请先运行数据导入脚本</p>
+                                </td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
 
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-briefcase me-2"></i>当前持仓</h5>
-                    <a href="{% url 'portfolio' %}" class="btn btn-sm btn-link text-decoration-none">查看深度报告 →</a>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>证券代码</th>
-                                <th>数量</th>
-                                <th>成本/现价</th>
-                                <th>市值</th>
-                                <th>浮动盈亏</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for h in holdings %}
-                            <tr>
-                                <td>
-                                    <a href="{% url 'stock_detail' h.symbol.symbol %}" class="text-decoration-none fw-bold text-dark">
-                                        {{ h.symbol.symbol }}
-                                    </a>
-                                </td>
-                                <td>{{ h.quantity }}</td>
-                                <td>
-                                    <small class="text-muted">${{ h.avg_cost|floatformat:2 }}</small><br>
-                                    <span class="fw-bold">${{ h.current_price|floatformat:2 }}</span>
-                                </td>
-                                <td>${{ h.market_value|floatformat:2 }}</td>
-                                <td class="fw-bold {% if h.calc_pnl >= 0 %}text-danger{% else %}text-success{% endif %}">
-                                    {{ h.calc_pnl|floatformat:2 }}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="5" class="text-center py-5 text-muted">暂无持仓。</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div> 
-            
-
+        {# 右侧：AI 投顾快速入口 #}
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-warning text-dark border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>待处理委托单</h5>
+            <div class="card ai-card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">🤖 AI 投顾助手</h3>
                 </div>
-                <div class="list-group list-group-flush">
-                    {% for order in pending_orders %}
-                    <div class="list-group-item border-0 border-bottom">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <span class="badge {% if order.order_type == 'BUY' %}bg-danger{% else %}bg-success{% endif %}">
-                                {{ order.order_type }}
-                            </span>
-                            <span class="fw-bold">{{ order.symbol.symbol }}</span>
-                            <form action="{% url 'cancel_order' order.id %}" method="post">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-secondary py-0">撤单</button>
-                            </form>
-                        </div>
-                        <div class="d-flex justify-content-between mt-2 small">
-                            <span>价格: ${{ order.price }}</span>
-                            <span>数量: {{ order.quantity }}</span>
-                        </div>
+                <div class="card-body">
+                    <p class="ai-intro">Fin-Insight-Expert Pro 随时为您分析持仓、解答市场疑问。</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary-custom" onclick="scrollToChat()">
+                            <i class="bi bi-chat-dots"></i> 开始对话
+                        </button>
                     </div>
-                    {% empty %}
-                    <div class="p-4 text-center text-muted small">当前无活动中的挂单</div>
-                    {% endfor %}
+                    <hr>
+                    <div class="ai-tips">
+                        <p class="text-muted small mb-2"><strong>💡 试试这样问我：</strong></p>
+                        <ul class="tip-list">
+                            <li>"我的账户盈亏如何？"</li>
+                            <li>"推荐几只高增长股票"</li>
+                            <li>"帮我分析一下持仓风险"</li>
+                            <li>"当前市场整体走势如何？"</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">最近成交记录</h5>
-                </div>
-                <div class="list-group list-group-flush">
-                    {% for t in recent_transactions %}
-                    <div class="list-group-item border-0 py-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="d-block text-muted">{{ t.trade_date|date:"m-d" }}</small>
-                                <span class="fw-bold">{{ t.symbol.symbol }}</span>
-                            </div>
-                            <div class="text-end">
-                                <span class="d-block fw-bold">${{ t.price }}</span>
-                                <small class="{% if t.type == 'BUY' %}text-danger{% else %}text-success{% endif %}">
-                                    {{ t.type }} {{ t.quantity }}股
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="p-3 text-center text-muted small">暂无成交记录</div>
-                    {% endfor %}
+            {# 快捷入口 #}
+            <div class="card quick-links-card mt-3">
+                <div class="card-body">
+                    <a href="{% url 'transactions' %}" class="quick-link">
+                        <i class="bi bi-receipt"></i> 查看全部交易记录
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+
+    {# ========== AI 对话区域 ========== #}
+    <div class="row mt-4" id="chatSection">
+        <div class="col-12">
+            <div class="card chat-card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">💬 Fin-Insight-Expert Pro 对话</h3>
+                    <span class="badge badge-ai">AI Powered</span>
+                </div>
+                <div class="card-body">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message assistant">
+                            <div class="chat-avatar">🤖</div>
+                            <div class="chat-bubble">
+                                <p>您好！我是 Fin-Insight-Expert Pro，您的 AI 投顾助手。我可以帮您分析持仓、解读市场行情、评估风险指标。请问有什么可以帮您的？</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area mt-3">
+                        <div class="input-group">
+                            <input type="text" id="chatInput" class="form-control"
+                                   placeholder="输入您的问题..." 
+                                   onkeypress="if(event.key==='Enter') sendMessage()">
+                            <button class="btn btn-primary-custom" onclick="sendMessage()">
+                                <i class="bi bi-send"></i> 发送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 
-{% block scripts %}
-{{ block.super }}<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('performanceChart').getContext('2d');
-        const labels = {{ chart_labels_json|safe }};
-        const data = {{ chart_data_json|safe }};
+{% block extra_scripts %}
+<script>
+// ===== 资产走势图 =====
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(251, 245, 130, 0.25)');
+    gradient.addColorStop(1, 'rgba(251, 245, 130, 0.02)');
 
+    // 使用 Django 内联传递的 NAV 历史数据（无需额外 API 请求）
+    const navLabels = {{ nav_labels_json|safe }};
+    const navValues = {{ nav_values_json|safe }};
+
+    if (navLabels.length > 0) {
         new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: '账户净值 (NAV)',
-                    data: data,
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#3498db',
-                    fill: true,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
-                    x: { grid: { display: false } }
+                type: 'line',
+                data: {
+                    labels: navLabels,
+                    datasets: [{
+                        label: '账户净值 (NAV)',
+                        data: navValues,
+                        borderColor: '#755760',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#755760',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                        borderWidth: 2.5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#FFF',
+                            titleColor: '#28030F',
+                            bodyColor: '#28030F',
+                            borderColor: '#EDE8E4',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => '¥ ' + parseFloat(ctx.raw).toLocaleString('zh-CN', {minimumFractionDigits: 2})
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: 'rgba(0,0,0,0.04)' },
+                            ticks: { callback: v => '¥' + (v/10000).toFixed(1) + '万' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 8 }
+                        }
+                    }
                 }
-            }
-        });
+            });
+    } else {
+        // 无数据时显示占位
+        ctx.fillStyle = '#EDE8E4';
+        ctx.font = '16px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无走势数据，开始交易后将自动生成', ctx.canvas.width/2, ctx.canvas.height/2);
+    }
+});
+
+// ===== AI 对话 =====
+function scrollToChat() {
+    document.getElementById('chatSection').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('chatInput').focus();
+}
+
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const container = document.getElementById('chatMessages');
+
+    // 添加用户消息
+    container.innerHTML += `
+        <div class="chat-message user">
+            <div class="chat-avatar">👤</div>
+            <div class="chat-bubble"><p>${escapeHtml(msg)}</p></div>
+        </div>`;
+    input.value = '';
+    container.scrollTop = container.scrollHeight;
+
+    // 添加加载指示
+    const loadingId = 'loading_' + Date.now();
+    container.innerHTML += `
+        <div class="chat-message assistant" id="${loadingId}">
+            <div class="chat-avatar">🤖</div>
+            <div class="chat-bubble"><p><em>思考中...</em></p></div>
+        </div>`;
+
+    fetch('/api/v1/ai/chat/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ message: msg })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById(loadingId)?.remove();
+        const replyHtml = marked.parse(data.reply || '抱歉，我暂时无法回答。');
+        container.innerHTML += `
+            <div class="chat-message assistant">
+                <div class="chat-avatar">🤖</div>
+                <div class="chat-bubble markdown-body">${replyHtml}</div>
+            </div>`;
+        container.scrollTop = container.scrollHeight;
+    })
+    .catch(() => {
+        document.getElementById(loadingId)?.remove();
+        container.innerHTML += `
+            <div class="chat-message assistant">
+                <div class="chat-avatar">🤖</div>
+                <div class="chat-bubble"><p>网络错误，请稍后再试。</p></div>
+            </div>`;
     });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCsrf() {
+    const cookie = document.cookie.split('; ').find(r => r.startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1] : '';
+}
 </script>
 {% endblock %}

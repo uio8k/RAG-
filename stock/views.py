@@ -7,7 +7,6 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q, F, Sum
 from django.utils import timezone
-from .models import Company
 import json
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
@@ -36,12 +35,23 @@ import uuid
 from agents.brain import FinancialBrain
 
 
-try:
-    print("--- [System] 正在初始化 Ada-Finance AI 引擎... ---")
-    ada_brain = FinancialBrain(model_name="qwen2.5:7b") 
-except Exception as e:
-    print(f"--- [Warning] AI 引擎初始化失败: {e} ---")
-    ada_brain = None
+# === AI 引擎懒加载（避免所有 Django 命令都加载模型） ===
+_ada_brain = None
+_ada_init_failed = False
+
+
+def get_ada_brain():
+    """懒加载获取 AI 引擎单例，仅在首次 AI 对话请求时初始化"""
+    global _ada_brain, _ada_init_failed
+    if _ada_brain is None and not _ada_init_failed:
+        try:
+            print("--- [System] 正在初始化 Ada-Finance AI 引擎... ---")
+            _ada_brain = FinancialBrain()
+        except Exception as e:
+            print(f"--- [Warning] AI 引擎初始化失败: {e} ---")
+            _ada_init_failed = True
+    return _ada_brain
+
 
 FONT_PATH = r"C:\Users\24300\Desktop\Stock\fonts\msyh.ttc"
 if os.path.exists(FONT_PATH):
@@ -290,6 +300,70 @@ def register_view(request):
             return render(request, "stock/register.html", {"message": str(e)})
             
     return render(request, "stock/register.html")
+
+def guest_login_view(request):
+    """
+    Guest mode: creates a temporary anonymous user account with a default
+    simulation, then logs them in automatically. No username/password required.
+    Each guest gets a unique UUID-based identity.
+    """
+    import uuid as uuid_lib
+    from datetime import date
+
+    guest_id = uuid_lib.uuid4().hex[:8]
+    guest_username = f"guest_{guest_id}"
+    guest_email = f"{guest_username}@guest.stockx.local"
+    guest_password = uuid_lib.uuid4().hex
+
+    try:
+        with transaction.atomic():
+            # 1. Sync with Global Simulation State
+            global_state = GlobalSimulationState.objects.select_for_update().first()
+            if not global_state:
+                initial_date = datetime.strptime("2026-03-02", "%Y-%m-%d").date()
+                global_state = GlobalSimulationState.objects.create(
+                    current_global_date=initial_date,
+                    is_market_open=True
+                )
+            shared_virtual_date = global_state.current_global_date
+
+            # 2. Create guest user
+            user = User.objects.create_user(guest_username, guest_email, guest_password)
+            user.first_name = 'Guest'
+            user.last_name = guest_id
+            user.gender = 'Other'
+            user.account_balance = INITIAL_BALANCE
+            user.save()
+
+            # 3. Create default simulation
+            new_sim = Simulation.objects.create(
+                user=user,
+                name=f"Guest Explorer - {guest_username}",
+                start_date=shared_virtual_date,
+                current_virtual_date=shared_virtual_date,
+                initial_cash=INITIAL_BALANCE,
+                available_cash=INITIAL_BALANCE,
+            )
+
+            # 4. Initial NAV record
+            Simulation_NAV_History.objects.create(
+                sim=new_sim,
+                record_date=shared_virtual_date,
+                nav=INITIAL_BALANCE,
+                cash=INITIAL_BALANCE,
+                market_value=Decimal('0.00')
+            )
+
+        # 5. Log in the guest automatically
+        login(request, user)
+        return HttpResponseRedirect(reverse("index"))
+
+    except Exception as e:
+        print(f"[GUEST LOGIN ERROR] {e}")
+        return render(request, "stock/login.html", {
+            "message": f"游客模式暂时不可用，请稍后再试。错误: {e}"
+        })
+
 import traceback
 from django.http import HttpResponse
 
@@ -347,24 +421,31 @@ def index(request):
     Synchronizes all users to a shared virtual timeline via GlobalSimulationState.
     """
     # 1. Fetch or Initialize Global Simulation State (The Master Clock)
+    from datetime import date
+    today = date.today()
     global_state = GlobalSimulationState.objects.first()
-    if not global_state:
-        return HttpResponse("系统错误：请联系管理员初始化全局时钟。")
     
-    virtual_today = global_state.current_global_date
     if not global_state:
         # Emergency fallback if no state exists in DB
-        initial_date = datetime.strptime("2026-03-02", "%Y-%m-%d").date()
         global_state = GlobalSimulationState.objects.create(
-            current_global_date=initial_date,
+            current_global_date=today,
             is_market_open=True
         )
+    elif global_state.current_global_date != today:
+        # 同步到本地计算机时间
+        global_state.current_global_date = today
+        global_state.save(update_fields=['current_global_date'])
     
     virtual_today = global_state.current_global_date
 
     # 2. Fetch the primary simulation account for the current user
     user_sims = Simulation.objects.filter(user=request.user).order_by('-created_at')
     active_sim = user_sims.first()
+    
+    # 3. Sync user's simulation date to local time
+    if active_sim and active_sim.current_virtual_date != today:
+        active_sim.current_virtual_date = today
+        active_sim.save(update_fields=['current_virtual_date'])
     
     # 3. Lazy Initialization: Create a simulation if none exists
     if not active_sim:
@@ -390,8 +471,8 @@ def index(request):
     selected_industry_id = request.GET.get('industry')
     query = request.GET.get('q', '').strip()
 
-    # Start with all companies
-    companies_qs = Company.objects.all()
+    # Start with all stocks
+    companies_qs = AShareStock.objects.all()
 
     # Apply Industry filter if selected
     if selected_industry_id:
@@ -400,11 +481,11 @@ def index(request):
     # Apply Search query if exists
     if query:
         companies_qs = companies_qs.filter(
-            Q(symbol__icontains=query) | Q(full_name__icontains=query)
+            Q(symbol__icontains=query) | Q(name__icontains=query)
         )
 
-    # Slice to top 10 and process prices based on virtual timeline
-    popular_companies = companies_qs[:10]
+    # Slice to top 20 and process prices based on virtual timeline
+    popular_companies = companies_qs[:20]
     processed_stocks = []
     
     for comp in popular_companies:
@@ -418,49 +499,26 @@ def index(request):
                 "symbol": comp.symbol,
                 "name": comp.full_name,
                 "price": price_rec.close_price,
+                "best_ask": price_rec.high_price,
+                "best_bid": price_rec.low_price,
             })
-    # 5. Portfolio Accounting: Calculate NAV and Current Holdings
-    # This now uses the global virtual_today for consistent valuation
-    total_nav, total_mkt_val = calculate_nav_optimized(active_sim, virtual_today)
-    
-    raw_holdings = Simulation_Holding.objects.filter(sim=active_sim).exclude(quantity=0).select_related('symbol')
-    processed_holdings = []
-    
-    for h in raw_holdings:
-        price_rec = get_market_price(h.symbol, virtual_today)
-        exec_price = price_rec.close_price if price_rec else h.symbol.current_price
-        
-        processed_holdings.append({
-            "symbol": h.symbol,
-            "quantity": h.quantity,
-            "avg_cost": h.avg_cost,
-            "current_price": exec_price,
-            "market_value": quantize_4(h.quantity * exec_price),
-            "calc_pnl": quantize_4((exec_price - h.avg_cost) * h.quantity)
-        })
+    # 5. Render Response with NAV history for the chart
+    # Fetch NAV history for the performance chart (last 30 records)
+    nav_records = Simulation_NAV_History.objects.filter(
+        sim=active_sim
+    ).order_by('-record_date')[:30]
+    nav_records = list(nav_records)[::-1]  # oldest first for chart
 
-    # 6. Data Visualization: Prepare labels and datasets for Chart.js
-    nav_history_qs = Simulation_NAV_History.objects.filter(sim=active_sim,record_date__gte="2026-02-12",record_date__lte=virtual_today).order_by('record_date')
-    chart_labels = [record.record_date.strftime("%m-%d") for record in nav_history_qs]
-    chart_data = [float(record.nav) for record in nav_history_qs]
-    recent_transactions = Simulation_Transaction.objects.filter(sim=active_sim).order_by('-trade_date', '-created_at')[:5]
+    nav_labels = [r.record_date.strftime('%m/%d') for r in nav_records]
+    nav_values = [float(r.nav) for r in nav_records]
 
-
-    # 7. Render Response with full context
     context = {
         "sim": active_sim,
-        "holdings": processed_holdings,
         "popular_stocks": processed_stocks,
         "industries": all_industries,               
         "current_industry": selected_industry_id,
-        "total_nav": total_nav,
-        "total_profit": total_nav - active_sim.initial_cash,
-        "profit_rate": round(((total_nav - active_sim.initial_cash) / active_sim.initial_cash * 100), 2),
-        "chart_labels_json": json.dumps(chart_labels),
-        "chart_data_json": json.dumps(chart_data),
-        "virtual_today": virtual_today, # Passed from global state
-        "is_market_open": global_state.is_market_open,
-        "recent_transactions": recent_transactions,
+        "nav_labels_json": json.dumps(nav_labels),
+        "nav_values_json": json.dumps(nav_values),
     }
     
     return render(request, "stock/index.html", context)
@@ -487,8 +545,8 @@ def api_search_companies(request):
     
     
     # Use select_related to join Industry table and reduce DB hits
-    companies = Company.objects.filter(
-        Q(symbol__icontains=query) | Q(full_name__icontains=query)
+    companies = AShareStock.objects.filter(
+        Q(symbol__icontains=query) | Q(name__icontains=query)
     ).select_related('industry')[:6]
     
     results = []
@@ -519,8 +577,8 @@ def api_search(request):
         return JsonResponse({"error": "Global state missing"}, status=500)
 
     # 2. Find matching companies
-    matches = Company.objects.filter(
-        Q(symbol__icontains=term) | Q(full_name__icontains=term)
+    matches = AShareStock.objects.filter(
+        Q(symbol__icontains=term) | Q(name__icontains=term)
     )[:SEARCH_LIMIT]
     
     results = []
@@ -618,7 +676,7 @@ def process_transaction(request):
             if request_id and TradeOrder.objects.filter(id=request_id).exists():
                 return JsonResponse({"success": True, "message": "Order already placed."})
 
-            company = Company.objects.get(symbol=symbol)
+            company = AShareStock.objects.get(symbol=symbol)
 
             # 5. God's Price Boundary Validation (Refined for P2P Visibility)
             # Use TODAY'S real market boundaries to ensure the order is physically possible.
@@ -744,8 +802,8 @@ def process_transaction(request):
                 "status": "FILLED" # Let the frontend know it can update the portfolio immediately
             })
 
-    except Company.DoesNotExist:
-        return JsonResponse({"success": False, "error": "Company not found."}, status=404)
+    except AShareStock.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Stock not found."}, status=404)
     except Exception as e:
         print(f"Error: {str(e)}")
         return JsonResponse({"success": False, "error": "Order failed."}, status=500)
@@ -1038,11 +1096,11 @@ def advance_simulation_date(request, sim_id=None):
 # ==========================================
 
 @login_required
-def company_financials(request, symbol):
+def stock_financials(request, symbol):
     """Deep fundamental data extraction for analysis."""
-    company = Company.objects.get(symbol=symbol)
+    stock = AShareStock.objects.get(symbol=symbol)
     # Using ER Financials fields
-    fin_list = Financials.objects.filter(symbol=company).order_by('-report_date')
+    fin_list = Financials.objects.filter(symbol=stock).order_by('-report_date')
     
     reports = []
     for f in fin_list:
@@ -1057,59 +1115,11 @@ def company_financials(request, symbol):
         })
 
     return render(request, "stock/financials.html", {
-        "stock": company,
+        "stock": stock,
         "reports": reports
     })
 
 @login_required
-def simulation_performance(request, sim_id):
-    """
-    Generates a performance report for a specific simulation.
-    Synchronized with the simulation's internal virtual clock.
-    """
-    # Use select_for_update or simply get as it's a read-heavy view
-    sim = Simulation.objects.get(id=sim_id, user=request.user)
-    
-    # CRITICAL: Use virtual date, not real-world today
-    report_date = sim.current_virtual_date
-    
-    # Calculate state based on virtual date
-    total_nav, mkt_val = calculate_nav_optimized(sim, report_date)
-    
-    # Fetch holdings and calculate value based on simulation price logic
-    raw_holdings = Simulation_Holding.objects.filter(sim=sim).exclude(quantity=0).select_related('symbol')
-    
-    processed_holdings = []
-    for h in raw_holdings:
-        price_rec = get_market_price(h.symbol, report_date)
-        current_price = price_rec.close_price if price_rec else h.symbol.current_price
-        
-        processed_holdings.append({
-            "symbol": h.symbol,
-            "quantity": h.quantity,
-            "avg_cost": h.avg_cost,
-            "current_price": current_price,
-            "market_value": quantize_4(h.quantity * current_price)
-        })
-    
-    # Performance Metrics
-    profit_loss = total_nav - sim.initial_cash
-    roi = (profit_loss / sim.initial_cash * 100) if sim.initial_cash > 0 else 0
-    
-    history = Simulation_NAV_History.objects.filter(sim=sim).order_by('record_date')
-    
-    return render(request, "stock/report.html", {
-        "sim": sim,
-        "holdings": processed_holdings,
-        "nav_history": history,
-        "stats": {
-            "roi": round(roi, 2),
-            "total_nav": total_nav,
-            "cash": sim.available_cash,
-            "report_date": report_date
-        }
-    })
-
 @login_required
 def stock_detail(request, symbol):
     """
@@ -1118,8 +1128,8 @@ def stock_detail(request, symbol):
     """
     from django.shortcuts import get_object_or_404
     
-    # 1. Fetch company basic info
-    company = get_object_or_404(Company, symbol=symbol)
+    # 1. Fetch stock basic info
+    company = get_object_or_404(AShareStock, symbol=symbol)
     
     # 2. Get the GLOBAL simulation date (The Master Clock)
     global_state = GlobalSimulationState.objects.first()
@@ -1250,8 +1260,8 @@ def stock_history_full(request, symbol):
     """
     from django.shortcuts import get_object_or_404
     
-    # 1. Fetch company basic info (Returns 404 if symbol not found)
-    company = get_object_or_404(Company, symbol=symbol)
+    # 1. Fetch stock basic info (Returns 404 if symbol not found)
+    company = get_object_or_404(AShareStock, symbol=symbol)
     
     # 2. Get the active simulation context for the current user
     active_sim = Simulation.objects.filter(user=request.user).order_by('-created_at').first()
@@ -1276,108 +1286,6 @@ def stock_history_full(request, symbol):
     })
 
 @login_required
-def portfolio_view(request):
-    """
-    Omni-Simulator Adapter: Calculates P&L and Market Values synchronized with 
-    the Global Master Clock (simulation date) for the new portfolio template.
-    Now includes automated NAV history tracking for the equity curve.
-    """
-    # Retrieve the most recent active simulation instance for the current user
-    active_sim = Simulation.objects.filter(user=request.user).order_by('-created_at').first()
-    
-    # Initialize summary variables
-    total_stock_value = Decimal('0.00')
-    processed_holdings = []
-
-    if active_sim:
-        virtual_today = active_sim.current_virtual_date
-        
-        # 1. Fetch raw holdings and join with Company model for metadata
-        raw_holdings = Simulation_Holding.objects.filter(
-            sim=active_sim
-        ).exclude(quantity=0).select_related('symbol')
-
-        # 2. Iterate through holdings to calculate values (This loop remains exactly as you wrote it)
-        for h in raw_holdings:
-            price_rec = get_market_price(h.symbol, virtual_today)
-            hist_price = price_rec.close_price if price_rec else Decimal('0.0000')
-            
-            mkt_val = h.quantity * hist_price
-            pnl = (hist_price - h.avg_cost) * h.quantity
-            if h.avg_cost != 0:
-                pnl_percent = ((hist_price - h.avg_cost) / abs(h.avg_cost) * 100)
-            else:
-                pnl_percent = 0
-            
-            total_stock_value += mkt_val
-            
-            processed_holdings.append({
-                "symbol": h.symbol.symbol,
-                "company_name": h.symbol.full_name,
-                "quantity": h.quantity,
-                "avg_cost": h.avg_cost,
-                "current_price": hist_price,
-                "market_value": mkt_val,
-                "pnl": pnl,
-                "pnl_percent": pnl_percent,
-            })
-
-        # 3. Finalize global financial snapshot
-        # CRITICAL FIX: We use the optimized engine to get total_assets to include frozen cash/shares.
-        # We still use the total_stock_value from the loop above to maintain your logic flow.
-        total_assets, _ = calculate_nav_optimized(active_sim, virtual_today)
-        
-        total_pnl = total_assets - active_sim.initial_cash
-        pnl_rate = (total_pnl / active_sim.initial_cash * 100) if active_sim.initial_cash > 0 else 0
-
-        # 4. Persistence: Ensure a NAV history record exists for the current virtual date
-        from .models import Simulation_NAV_History
-        Simulation_NAV_History.objects.update_or_create(
-            sim=active_sim,
-            record_date=virtual_today,
-            defaults={
-                'nav': total_assets,
-                'cash': active_sim.available_cash,
-                'market_value': total_stock_value
-            }
-        )
-
-        # 5. Retrieval: Get all historical points for the chart
-        nav_history_qs = Simulation_NAV_History.objects.filter(
-            sim=active_sim
-        ).order_by('record_date')
-
-        chart_labels = [h.record_date.strftime("%m-%d") for h in nav_history_qs]
-        chart_values = [float(h.nav) for h in nav_history_qs]
-
-        # 1. Capture the sum. Ensure we handle negative values from the ledger.
-        fee_data = Simulation_Cash_Flow.objects.filter(
-            sim=active_sim, 
-            change_type=Simulation_Cash_Flow.FlowType.FEE # Use the Class constant to be safe
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.0000')
-
-        # 2. Always store as a positive magnitude for display
-        total_fees_sum = abs(fee_data)
-
-        # 3. Audit Logic: Theoretical = Actual + Magnitude of Fees
-        theoretical_cash = active_sim.available_cash + total_fees_sum
-
-
-        return render(request, "stock/portfolio.html", {
-            "holdings_detailed": processed_holdings,
-            "sim": active_sim,
-            "total_assets": total_assets,
-            "total_stock_value": total_stock_value,
-            "total_pnl": total_pnl,
-            "pnl_percent": pnl_rate,
-            "chart_labels": chart_labels,
-            "chart_values": chart_values,
-            "total_fees_sum": total_fees_sum,
-            "theoretical_cash": theoretical_cash,
-        })
-    
-    return render(request, "stock/portfolio.html", {"holdings_detailed": []})
-
 @login_required
 def transactions_view(request):
     """
@@ -1429,8 +1337,8 @@ def api_calculate_custom_indicator(request):
         return JsonResponse({"success": False, "error": "Please provide both a stock symbol and a formula."})
 
     try:
-        # 2. Identify the company and simulation context
-        company = Company.objects.get(symbol=symbol)
+        # 2. Identify the stock and simulation context
+        company = AShareStock.objects.get(symbol=symbol)
         active_sim = Simulation.objects.filter(user=request.user).order_by('-created_at').first()
         
         # Use simulation date to prevent data leaking from the "future"
@@ -1597,14 +1505,14 @@ def ai_chat_api(request):
         if not user_message:
             return JsonResponse({"reply": "您想聊点什么呢？比如：帮我分析一下持仓风险。"})
 
-        # 2. 检查 AI 引擎是否就绪
-        if not ada_brain:
-            return JsonResponse({"reply": "抱歉，AI 引擎暂时离线，请联系管理员检查 Ollama 服务。"})
+        # 2. 检查 AI 引擎是否就绪（懒加载）
+        brain = get_ada_brain()
+        if not brain:
+            return JsonResponse({"reply": "抱歉，AI 引擎暂时离线，请检查 DeepSeek API 配置。"})
 
         # 3. 让 Agent 思考 (它会自动处理你的虚拟日期和持仓)
-        # 注意：我们在 brain.py 里已经对齐了你的 current_virtual_date 字段
         print(f"--- [AI Request] 用户 {request.user.username} 提问: {user_message} ---")
-        ai_reply = ada_brain.think(request.user, user_message)
+        ai_reply = brain.think(request.user, user_message)
 
         return JsonResponse({
             "reply": ai_reply,

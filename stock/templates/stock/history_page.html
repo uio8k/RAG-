@@ -1,0 +1,52 @@
+{% extends "stock/base.html" %}
+
+{% block title %}{{ company.symbol }} — 历史行情 — StockX Pro{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <nav class="stockx-breadcrumb mb-3">
+        <a href="{% url 'index' %}"><i class="bi bi-house"></i> 交易终端</a>
+        <span class="separator">›</span>
+        <a href="{% url 'stock_detail' company.symbol %}">{{ company.symbol }}</a>
+        <span class="separator">›</span>
+        <span class="current">历史行情</span>
+    </nav>
+
+    <div class="card">
+        <div class="card-header-custom">
+            <h3 class="card-header-title">📅 {{ company.symbol }} — 历史价格</h3>
+            <span class="text-muted small">数据截止: {{ reference_date|date:"Y-m-d" }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table stockx-table">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>开盘价</th>
+                        <th>最高价</th>
+                        <th>最低价</th>
+                        <th>收盘价</th>
+                        <th>成交量</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in history %}
+                    <tr>
+                        <td>{{ p.trade_date|date:"Y-m-d" }}</td>
+                        <td>¥ {{ p.open_price|floatformat:2 }}</td>
+                        <td class="text-success">¥ {{ p.high_price|floatformat:2 }}</td>
+                        <td class="text-danger">¥ {{ p.low_price|floatformat:2 }}</td>
+                        <td><strong>¥ {{ p.close_price|floatformat:2 }}</strong></td>
+                        <td>{{ p.volume|floatformat:0 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-4 text-muted">暂无历史数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

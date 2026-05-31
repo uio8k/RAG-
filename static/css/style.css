@@ -1,234 +1,553 @@
-/* ====== StockX Pro - 暖金高级金融风格 CSS ====== */
+/* ====== StockX Pro — Heidi Health Inspired Design System ======
+   Design source: https://www.heidihealth.com/en-gb
+   Extracted: 2026-05-31 via Firecrawl
+   Target stack: Bootstrap 5 + Chart.js
+   ================================================================ */
 
 :root {
-  --bg-card: #ffffff;
-  --border-light: #f3e0c4; /* 柔和的浅金/米色边框 */
-  --text-dark: #333333;
-  --text-secondary: #777777;
-  
-  /* 核心主题色 */
-  --theme-gold: #f7b46d; 
-  --theme-gold-light: #fdf6eb;
-  --theme-dark: #231f1a; /* 黑色信息栏背景 */
-  
-  /* 涨跌颜色 (对应截图中的红蓝绿) */
-  --glow-green: #2fa84f;
-  --glow-red: #d93a3a;
-  --glow-blue: #2d73b3;
+  /* 核心配色 (源自 Heidi Health) */
+  --primary: #FBF582;          /* 暖金主色 */
+  --primary-hover: #F5E84D;    /* 悬停加深 */
+  --secondary: #755760;        /* 紫褐辅色 */
+  --bg-page: #FCFAF8;          /* 暖白背景 */
+  --bg-card: #FFFFFF;          /* 卡片白 */
+  --text-primary: #28030F;     /* 深棕文字 */
+  --text-secondary: #6B5E62;   /* 次要文字 */
+  --border-light: #EDE8E4;     /* 浅边框 */
+  --border-medium: #D9D2CC;    /* 中等边框 */
+
+  /* 涨跌色 */
+  --color-up: #2FA84F;
+  --color-down: #D93A3A;
+
+  /* 间距 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+
+  /* 阴影 */
+  --shadow-card: 0 1px 3px rgba(120, 90, 60, 0.06), 0 1px 1px rgba(120, 90, 60, 0.03);
+  --shadow-card-hover: 0 4px 16px rgba(120, 90, 60, 0.10);
+
+  /* 字体 */
+  --font-heading: 'Georgia', 'Times New Roman', serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-/* =========================================
-   全局背景：米白 → 活力沙金/橘色的平滑过渡 
-   ========================================= */
+/* ====== 全局重置 ====== */
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
   padding: 0;
-  /* 移除干扰的图片，使用纯净的渐变还原截图中的全局背景 */
-  background: linear-gradient(to bottom, #fcfaf8 0%, #ffbe84 100%) no-repeat center center fixed;
-  background-size: cover;
-  color: var(--text-dark);
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  line-height: 1.5;
-  overflow-x: hidden;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
 
-/* =========================================
-   顶部横幅 (保留你的金币背景图容器)
-   ========================================= */
-.banner-container {
-  height: 220px;
-  position: relative;
-  overflow: hidden;
-  background: #0a0a0a;
-}
-.banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+a { color: var(--secondary); text-decoration: none; transition: color 0.2s; }
+a:hover { color: #5A3E4A; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
-/* =========================================
-   【新增】深色信息栏 (当前模拟交易日)
-   ========================================= */
-.dark-info-bar {
-  background: var(--theme-dark);
-  color: #f7d082; /* 金色文字 */
-  border-radius: 8px;
-  padding: 12px 20px;
-  margin: 15px 0;
+/* ====== 导航栏 ====== */
+.stockx-navbar {
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border-light);
+  padding: 12px 0;
+  box-shadow: 0 1px 4px rgba(120,90,60,0.04);
+}
+.stockx-navbar .navbar-brand {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border: 1px solid #4a3c28;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  gap: 8px;
 }
-.dark-info-bar .badge {
-  background-color: #dfa951 !important;
-  color: #231f1a !important;
+.stockx-navbar .navbar-brand .brand-icon { font-size: 1.5rem; }
+.stockx-navbar .navbar-brand strong { color: var(--secondary); }
+.stockx-navbar .nav-link {
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.stockx-navbar .nav-link:hover,
+.stockx-navbar .nav-link.active {
+  color: var(--secondary);
+  background: rgba(117, 87, 96, 0.06);
 }
 
-/* =========================================
-   卡片基础风格：白底 + 浅金边框 + 暖色阴影
-   ========================================= */
+/* ====== 按钮 ====== */
+.btn-primary-custom {
+  background: var(--primary);
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 10px 24px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(120,90,60,0.08);
+}
+.btn-primary-custom:hover {
+  background: var(--primary-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(120,90,60,0.15);
+}
+.btn-primary-custom:active {
+  transform: translateY(0);
+}
+
+.btn-outline-custom {
+  background: #FFFFFF;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-outline-custom:hover {
+  background: rgba(117, 87, 96, 0.04);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+/* ====== 卡片 ====== */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 8px; /* 截图中圆角适中 */
-  color: var(--text-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(220, 140, 60, 0.08); /* 暖色系阴影 */
   margin-bottom: 20px;
+  overflow: hidden;
 }
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(220, 140, 60, 0.15);
-}
-.card-body {
-  padding: 20px;
+  box-shadow: var(--shadow-card-hover);
 }
 
-/* =========================================
-   【专属卡片】账户总资产 (左上角第一张卡片)
-   ========================================= */
-.card-highlight {
-  /* 直接使用 D2B48C 沙棕色 */
-  background: #D2B48C !important;
-  border: 1px solid #A68A6A !important; /* 深色边框 */
-  color: #222222 !important; /* 确保文字颜色清晰 */
+.card-header-custom {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
+.card-header-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+.card-body { padding: 24px; }
 
-/* 进度条/装饰横线 (总资产数字下方) */
-.asset-progress {
-  height: 3px;
-  background: #ffffff;
-  border-radius: 2px;
-  margin-top: 10px;
-  width: 40%; 
-  position: relative;
+/* ====== 模拟信息栏 ====== */
+.sim-info-bar {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FCFAF8 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-card);
+}
+.sim-label {
   display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
 }
-.asset-progress::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 100%;
-  width: 150%; 
-  height: 100%;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
+.sim-date {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
+.sim-cash, .sim-nav {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+.badge-market {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.badge-market.open { background: #E6F4EA; color: var(--color-up); }
+.badge-market.closed { background: #FDE8E8; color: var(--color-down); }
 
-/* =========================================
-   【专属表头】右侧带背景色的卡片表头
-   ========================================= */
-.card-header-orange {
-  background: var(--theme-gold) !important;
-  color: var(--text-dark) !important;
-  font-weight: 600;
-  border-bottom: none;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  padding: 12px 20px;
-}
-
-/* =========================================
-   表格样式统一 & 隔行渐变
-   ========================================= */
-.table {
+/* ====== 表格 ====== */
+.stockx-table {
   margin-bottom: 0;
+  font-size: 0.9rem;
 }
-.table th {
-  background: var(--theme-gold-light);
+.stockx-table thead th {
+  background: #FAF8F5;
+  color: var(--text-secondary);
   font-weight: 600;
-  color: var(--text-dark);
-  padding: 12px 16px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   border-bottom: 2px solid var(--border-light);
-  border-top: none;
-}
-.table td {
   padding: 12px 16px;
-  border-top: 1px solid var(--border-light);
+}
+.stockx-table tbody td {
+  padding: 12px 16px;
   vertical-align: middle;
+  border-bottom: 1px solid var(--border-light);
 }
+.stockx-table tbody tr:hover { background: rgba(251, 245, 130, 0.06); }
+.stockx-table tbody tr:last-child td { border-bottom: none; }
 
-/* 市场探索：隔行渐变 (保留你的要求) */
-.table tbody tr:nth-child(even) {
-  background: linear-gradient(to right, rgba(246, 182, 117, 0.04) 0%, rgba(246, 182, 117, 0.12) 100%);
-}
-.table tbody tr:hover {
-  background: rgba(246, 182, 117, 0.15);
-}
-
-/* =========================================
-   功能性颜色 & 字体
-   ========================================= */
-h1, h2, h3, h4, h5, h6 { font-weight: 600; }
-.text-profit { color: var(--glow-green) !important; }
-.text-loss { color: var(--glow-red) !important; font-weight: bold; } /* 截图中的红色卖价偏粗体 */
-.text-blue { color: var(--glow-blue) !important; font-weight: bold; } /* 截图中有蓝色的数值 */
-.text-gold { color: #d68910 !important; font-weight: bold; } /* 冻结资金的金币符号 */
-
-/* =========================================
-   按钮样式 (截图中的白色描边小按钮)
-   ========================================= */
-.btn-outline-action {
-  background: #ffffff;
-  border: 1px solid #dcdcdc;
-  color: #555555;
-  font-size: 0.85rem;
-  padding: 4px 12px;
+.symbol-badge {
+  display: inline-block;
+  background: rgba(117, 87, 96, 0.08);
+  color: var(--secondary);
+  padding: 2px 10px;
   border-radius: 4px;
-  transition: all 0.2s;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: monospace;
 }
-.btn-outline-action:hover {
-  border-color: var(--theme-gold);
-  color: var(--theme-gold);
-  background: #fffbfa;
+.symbol-link { text-decoration: none; }
+
+.price-cell { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ====== 图表 ====== */
+.chart-card .card-body { padding: 20px; }
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 320px;
 }
 
-/* =========================================
-   图表容器
-   ========================================= */
-#performanceChart {
-  background: white;
-  border-radius: 8px;
-  padding: 15px;
+/* ====== AI 对话 ====== */
+.ai-card .ai-intro { font-size: 0.95rem; color: var(--text-secondary); }
+.ai-tips .tip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ai-tips .tip-list li {
+  padding: 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.ai-tips .tip-list li::before { content: '\25B8 '; color: var(--primary); }
+
+.badge-ai {
+  background: rgba(251, 245, 130, 0.2);
+  color: #8B7D00;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.chat-messages {
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.chat-message {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.chat-message.user { flex-direction: row-reverse; }
+.chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.chat-message.assistant .chat-avatar { background: rgba(117,87,96,0.08); }
+.chat-message.user .chat-avatar { background: rgba(251,245,130,0.3); }
+
+.chat-bubble {
+  background: #FFFFFF;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  max-width: 80%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.chat-message.user .chat-bubble {
+  background: rgba(251,245,130,0.15);
+  border-color: rgba(251,245,130,0.4);
+}
+.chat-bubble p { margin: 0 0 0.4em 0; font-size: 0.9rem; line-height: 1.5; }
+.chat-bubble p:last-child { margin-bottom: 0; }
+
+/* ====== Markdown 渲染内容（AI 回复） ====== */
+.markdown-body {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+.markdown-body p { margin: 0 0 0.5em 0; }
+.markdown-body p:last-child { margin-bottom: 0; }
+.markdown-body strong { color: var(--secondary); font-weight: 700; }
+.markdown-body em { color: var(--text-secondary); }
+.markdown-body code {
+  background: rgba(117, 87, 96, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: #C0392B;
+}
+.markdown-body pre {
+  background: #1E1E1E;
+  color: #D4D4D4;
+  padding: 10px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0.5em 0;
+}
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.markdown-body ul, .markdown-body ol {
+  margin: 0.3em 0;
+  padding-left: 1.4em;
+}
+.markdown-body li { margin-bottom: 0.15em; }
+.markdown-body blockquote {
+  border-left: 3px solid var(--primary);
+  margin: 0.4em 0;
+  padding: 4px 12px;
+  background: rgba(251, 245, 130, 0.12);
+  color: var(--text-secondary);
+  border-radius: 0 4px 4px 0;
+}
+.markdown-body h1, .markdown-body h2, .markdown-body h3,
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  margin: 0.6em 0 0.3em 0;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+}
+.markdown-body h2 { font-size: 1.15em; }
+.markdown-body h3 { font-size: 1.05em; }
+.markdown-body a { color: var(--secondary); text-decoration: underline; }
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  font-size: 0.8rem;
+}
+.markdown-body th {
+  background: rgba(117, 87, 96, 0.08);
+  padding: 6px 10px;
+  border: 1px solid var(--border-light);
+  text-align: left;
+  font-weight: 600;
+}
+.markdown-body td {
+  padding: 5px 10px;
   border: 1px solid var(--border-light);
 }
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 0.6em 0;
+}
 
-/* 移动端适配 */
+.chat-input-area .form-control {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border: 1px solid var(--border-medium);
+  padding: 10px 16px;
+}
+.chat-input-area .btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+
+/* ====== 快捷链接 ====== */
+.quick-links-card .card-body { padding: 16px 24px; }
+.quick-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--secondary);
+  font-weight: 500;
+}
+.quick-link:hover { color: #5A3E4A; }
+
+/* ====== 面包屑 ====== */
+.stockx-breadcrumb {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.stockx-breadcrumb a { color: var(--text-secondary); }
+.stockx-breadcrumb a:hover { color: var(--secondary); }
+.stockx-breadcrumb .separator { margin: 0 8px; color: var(--border-medium); }
+.stockx-breadcrumb .current { color: var(--text-primary); font-weight: 500; }
+
+/* ====== 股票头部 ====== */
+.stock-header-card .card-body { padding: 28px 32px; }
+.stock-title {
+  font-family: monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.stock-name { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 8px; }
+.stock-price-large {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+.stock-date { font-size: 0.85rem; color: var(--text-secondary); }
+.holding-badge {
+  display: inline-block;
+  background: rgba(47, 168, 79, 0.1);
+  color: var(--color-up);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* ====== 搜索表单 ====== */
+.search-form-inline .form-control,
+.search-form-inline .form-select {
+  border: 1px solid var(--border-medium);
+  font-size: 0.9rem;
+}
+.search-form-inline .form-control:focus,
+.search-form-inline .form-select:focus {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 0.2rem rgba(117,87,96,0.1);
+}
+
+/* ====== 认证页面 ====== */
+.auth-card {
+  border: none;
+  box-shadow: 0 2px 24px rgba(120,90,60,0.08);
+}
+.auth-icon { font-size: 3rem; }
+.auth-title {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.auth-subtitle { color: var(--text-secondary); margin-bottom: 24px; }
+.auth-link { color: var(--secondary); font-weight: 600; }
+.auth-link:hover { color: #5A3E4A; }
+
+/* ====== 错误页面 ====== */
+.error-page { padding: 60px 0; }
+.error-code {
+  font-family: var(--font-heading);
+  font-size: 7rem;
+  font-weight: 700;
+  color: rgba(117, 87, 96, 0.15);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.error-title {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.error-desc { color: var(--text-secondary); font-size: 1rem; }
+
+/* ====== 页脚 ====== */
+.stockx-footer {
+  background: #FFFFFF;
+  border-top: 1px solid var(--border-light);
+  padding: 16px 0;
+  margin-top: 40px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.footer-brand { font-family: var(--font-heading); font-weight: 700; color: var(--text-primary); }
+.footer-divider { margin: 0 10px; color: var(--border-medium); }
+
+/* ====== 响应式 ====== */
 @media (max-width: 768px) {
-  .dark-info-bar { flex-direction: column; text-align: left; align-items: flex-start; gap: 10px; }
-  .asset-progress { width: 60%; }
+  .sim-info-bar .row > div { text-align: center !important; margin-bottom: 8px; }
+  .sim-info-bar .row > div:last-child { margin-bottom: 0; }
+  .stock-header-card .row > div { text-align: center !important; }
+  .chart-container { height: 240px; }
+  .stock-price-large { font-size: 1.8rem; }
 }
 
+/* ====== 滚动条 ====== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
-/* 适中的公司logo尺寸 */
-.company-logo {
-  max-height: 180px !important;   /* 从 120px 减小到 60px */
-  height: auto !important;
-  width: auto !important;
-  margin-left: 30px !important;
-  vertical-align: middle !important;
-  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.25)) !important;
-  max-width: 100% !important;
-  object-fit: contain !important;
-  /* 确保图片不会溢出容器 */
-  flex-shrink: 0 !important;
-  /* 调整图片与文字的垂直对齐 */
-  position: relative !important;
-  top: -4px !important;
+/* ====== 表单控件 ====== */
+.form-control, .form-select {
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 0.2rem rgba(117, 87, 96, 0.1);
+}
+.form-label { font-weight: 500; font-size: 0.9rem; color: var(--text-primary); }
+
+/* ====== Badge 计数 ====== */
+.badge-count {
+  background: rgba(117,87,96,0.08);
+  color: var(--secondary);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
 }
 
-/* 防止公司详情页被导航栏遮挡 */
-.container.mt-4 {
-  padding-top: 70px !important;
+.chat-send-btn {
+  border-radius: 50% !important;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%) !important;
+  border: none !important;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(30,136,229,0.3);
 }
-
-/* 如果导航栏高度变化，可以调整这个值 */
-@media (max-width: 768px) {
-  .container.mt-4 {
-    padding-top: 60px !important; /* 移动端可能略小 */
-  }
+.chat-send-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 14px rgba(30,136,229,0.4);
 }

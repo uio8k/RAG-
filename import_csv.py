@@ -21,12 +21,12 @@ except Exception as e:
     sys.exit(1)
 
 # 导入所有相关模型
-from stock.models import Company, Financials, DailyPrice, Industry
+from stock.models import AShareStock, Financials, DailyPrice, Industry
 
 # ==========================================
 # 2. 配置 CSV 文件路径 (指向 Data 文件夹)
 # ==========================================
-BASE_DIR = r"C:\Users\24300\Desktop\Stock\Data"
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Data")
 COMPANIES_CSV = os.path.join(BASE_DIR, "companies.csv")
 FINANCIALS_CSV = os.path.join(BASE_DIR, "financials.csv")
 PRICES_CSV = os.path.join(BASE_DIR, "daily_prices.csv")
@@ -42,7 +42,7 @@ def clean_val(val, default=0):
         return default
 
 def import_companies():
-    print("正在导入行业与公司档案...")
+    print("正在导入行业与股票档案...")
     if not os.path.exists(COMPANIES_CSV):
         print(f"错误：找不到文件 {COMPANIES_CSV}")
         return
@@ -60,20 +60,22 @@ def import_companies():
                 defaults={'sector': sector_name}
             )
 
-            # 2. 更新或创建公司信息，并关联 Industry
-            Company.objects.update_or_create(
+            # 2. 更新或创建股票信息，并关联 Industry
+            AShareStock.objects.update_or_create(
                 symbol=row['symbol'],
                 defaults={
-                    'full_name': row['full_name'],
+                    'name': row.get('full_name', row['symbol']),
                     'industry': industry_obj,
-                    'market_cap': Decimal(str(clean_val(row.get('market_cap')))) if row.get('market_cap') else None,
+                    'market': row.get('market', 'SH'),  # 从 CSV 读取市场，默认上海
+                    'market_type': sector_name,
+                    'total_market_cap': int(clean_val(row.get('market_cap'))) if row.get('market_cap') else None,
                     'trailing_pe': Decimal(str(clean_val(row.get('trailing_pe')))) if row.get('trailing_pe') else None,
                     'price_sales': Decimal(str(clean_val(row.get('price_sales')))) if row.get('price_sales') else None,
                     'current_price': Decimal(str(clean_val(row.get('current_price')))) if row.get('current_price') else None,
                 }
             )
             count += 1
-    print(f"成功导入/更新 {count} 家公司及其行业分类。")
+    print(f"成功导入/更新 {count} 只股票及其行业分类。")
 
 def import_financials():
     print("正在导入详细财务报表 (包含资产负债数据)...")
@@ -85,7 +87,7 @@ def import_financials():
         count = 0
         for row in reader:
             try:
-                comp = Company.objects.get(symbol=row['symbol'])
+                comp = AShareStock.objects.get(symbol=row['symbol'])
                 # 处理日期格式 (兼容 2026/1/31 或 2026-01-31)
                 date_str = row['report_date'].replace('/', '-')
                 
@@ -107,7 +109,7 @@ def import_financials():
                     }
                 )
                 count += 1
-            except Company.DoesNotExist:
+            except AShareStock.DoesNotExist:
                 continue
     print(f"成功导入 {count} 条财务报表记录。")
 
@@ -131,7 +133,7 @@ def import_daily_prices():
             trade_date_obj = datetime.strptime(row['trade_date'], '%Y-%m-%d').date()
             if (row['symbol'], trade_date_obj) not in existing_records:
                 try:
-                    comp = Company.objects.get(symbol=row['symbol'])
+                    comp = AShareStock.objects.get(symbol=row['symbol'])
                     prices_to_create.append(DailyPrice(
                         symbol=comp,
                         trade_date=row['trade_date'],
@@ -141,7 +143,7 @@ def import_daily_prices():
                         close_price=Decimal(str(clean_val(row['close_price']))),
                         volume=int(clean_val(row.get('volume')))
                     ))
-                except Company.DoesNotExist:
+                except AShareStock.DoesNotExist:
                     continue
             else:
                 skipped += 1

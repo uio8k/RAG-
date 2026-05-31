@@ -1,111 +1,262 @@
-# StockX Pro: 金融交易仿真系统及RAG投顾助手
+# StockX Pro — RAG 金融 AI 投顾助手
 
-[![Python Version](https://img.shields.io/badge/python-3.14.2-blue)](https://www.python.org/)
-[![Framework](https://img.shields.io/badge/framework-Django%205.0-green)](https://www.djangoproject.com/)
+[![Python](https://img.shields.io/badge/python-3.13-blue)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/django-6.0-green)](https://www.djangoproject.com/)
+[![Bootstrap](https://img.shields.io/badge/bootstrap-5.3-purple)](https://getbootstrap.com/)
+[![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
+> 基于 [Nexent](https://github.com/ModelEngine-Group/nexent) 改造的 RAG 金融 AI 投顾，支持私有数据检索与自然语言交互。
+
+---
 
 ## 🚀 项目简介
-**StockX Pro** 是一个专为金融工程和算法交易设计的专业级股票模拟交易系统。该系统集成了深度的市场模拟逻辑、实时资产管理的 AI 投顾智能体。
 
-本项目旨在探索大型语言模型（LLM）与复杂金融优化算法在模拟实盘环境中的深度融合。
+**StockX Pro** 是一个基于检索增强生成（RAG）技术的金融 AI 投顾助手。项目基于 Nexent 开源框架改造，将通用 AI Agent 平台转型为聚焦 **金融数据分析** 与 **智能投顾问答** 的垂直领域应用。
 
----
-
-## 🛠️ 核心功能展示
-
-### 1. 交易终端概览
-系统提供沉浸式的交易体验，包括实时资产走势图、多维度盈亏分析以及动态市场探索。
-[首页展示]
-<img width="2513" height="1385" alt="首页" src="https://github.com/user-attachments/assets/2ebf508a-4b84-4c08-ba4c-22873976dcb4" />
-
-
-### 2. 深度资产管理
-支持对个人持仓的穿透式管理，实时计算各项风险指标。
-[持仓概览]
-<img width="2440" height="1245" alt="持仓" src="https://github.com/user-attachments/assets/97433614-7ebb-4b6d-882b-97e0bf61ba79" />
-
-
-### 3. 历史成交追踪
-完整记录每一笔交易指令，支持对过往决策的复盘与归因分析。
-[交易记录]
-<img width="2559" height="1396" alt="交易记录" src="https://github.com/user-attachments/assets/c4711b70-a3f3-462a-8748-f48d350da146" />
-
+核心亮点：
+- 🤖 **RAG 私有数据检索** — FAISS 向量库 + sentence-transformers，AI 可直接查询你的财务数据库
+- 💬 **自然语言交互** — 用中文提问持仓分析、风险评估、市场行情，Markdown 富文本回复
+- 🎨 **现代 SaaS 风格 UI** — 借鉴 Heidi Health 设计语言，暖色调专业仪表盘
 
 ---
 
-## 🧠 智能体系统：Fin-Insight-Expert Pro
-系统内嵌了基于 RAG（检索增强生成）技术的智能体，能够直接调取用户私有财务数据并提供专业分析。
+## 🖥️ 功能展示
 
-* **多轮交互诊断**：实时分析当前系统日期下的市场行情。
-* **私有数据联通**：智能体可直接读取 `Simulation_Holding` 等数据库表，实现精准的持仓建议。
+### AI 投顾对话
+基于 RAG 技术，智能体可直接读取数据库中的股票行情、财务报表等私有数据，回答持仓分析、风险评估、投资建议等问题，支持 Markdown 渲染（表格、代码块、列表等）。
 
-[智能体交互1]
-<img width="570" height="676" alt="智能体1" src="https://github.com/user-attachments/assets/40ea1c6e-827a-4522-a2ed-5acd12c67d5b" />
+### 市场数据浏览
+内置 A 股市场行情浏览，支持按行业筛选和关键词搜索，可查看股票详情和历史财务指标。
 
-[智能体交互2]
-<img width="580" height="782" alt="智能体2" src="https://github.com/user-attachments/assets/0671babc-869f-4cbc-9233-79c8d056233e" />
-
-json文件
-[agent.json](https://github.com/user-attachments/files/27721724/agent.json)
-
-
+### 游客模式
+无需注册即可体验 AI 投顾功能，一键进入系统。
 
 ---
 
-💻 核心技术：数据库驱动的金融仿真引擎
-本项目是数据库系统课程的实践成果，核心在于构建了一个高性能、高一致性的模拟交易底层架构。系统通过 Django ORM 与后端数据库（MySQL/PostgreSQL）深度集成，实现了复杂的金融业务逻辑。
+## 🛠️ 核心功能
 
-📊 数据库架构亮点
-关系模型设计：严格遵循第三范式（3NF），涵盖了用户（User）、公司（Company）、持仓（Holding）、交易订单（Order）以及账户表现历史（Performance）等核心实体。
+### 1. RAG 智能投顾（Fin-Insight-Expert Pro）
+- **FAISS 向量检索** — 将用户私有财务数据向量化，支持语义级相似度搜索
+- **DeepSeek 大模型** — 调用 DeepSeek API 进行深度金融分析
+- **Text-to-SQL** — 自然语言自动转换为数据库查询，精准获取数据
+- **多轮对话记忆** — 保持对话上下文，支持连续追问与深度分析
+- **Markdown 回复** — 表格、代码、列表等富文本格式输出
 
-事务一致性保证：在执行买入/卖出操作时，通过数据库事务确保“扣除余额”与“增加持仓”的原子性，防止在高并发模拟下的数据不一致。
+### 2. 市场数据查询
+- 东方财富 A 股实时行情
+- 行业分类筛选
+- 历史价格与财务指标可视化（Chart.js）
 
-高效索引优化：针对股票代码（Symbol）和时间戳（Timestamp）建立了复合索引，大幅提升了 K 线展示及历史账单的查询效率。
+### 3. 用户系统
+- 注册 / 登录 / 游客模式
+- 个性化数据隔离
 
-🤖 AI 智能体：基于私有数据的文本转 SQL (Text-to-SQL) 增强
-系统内嵌的 Fin-Insight-Expert 并非通用的聊天机器人，而是一个数据感知型智能体：
+---
 
-私有语义检索：智能体能够理解用户的自然语言指令，并将其映射为对数据库 Simulation_Holding 和 Financials 表的查询逻辑。
+## 🏗️ 技术架构
 
-自动化报表生成：用户只需提问“我的账户盈亏如何？”，智能体即可实时聚合数据库中的成交记录并计算出精准的百分比结果。
+```
+┌─────────────────────────────────────────────────┐
+│                    前端 (Browser)                 │
+│  Bootstrap 5 + Chart.js + Marked.js              │
+│  Heidi Health 设计风格 · 暖金色调                 │
+└─────────────────┬───────────────────────────────┘
+                  │ HTTP
+┌─────────────────▼───────────────────────────────┐
+│                Django 6.0 (Python)               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────────┐ │
+│  │  Views   │ │  Models  │ │  AI Brain (RAG)   │ │
+│  │  页面渲染  │ │  数据模型  │ │  FAISS + LLM     │ │
+│  └──────────┘ └──────────┘ └──────────────────┘ │
+└─────────────────┬───────────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────────┐
+│              数据层                               │
+│  SQLite / MySQL  ·  FAISS 向量索引  ·  东方财富API │
+│             ·  DeepSeek API                      │
+└─────────────────────────────────────────────────┘
+```
 
-🧪 实验验证（数据集说明）
-为了模拟真实的金融数据环境，本项目导入了多组经过清洗的财务指标数据，并针对不同的数据规模（Data Ratio）进行了查询性能测试，确保系统在海量历史数据下仍能秒级响应。
+### AI 数据检索层级
+
+```
+用户提问
+    │
+    ▼
+┌─────────────────┐
+│ 1. 持仓数据检索   │  ← 私有数据库
+├─────────────────┤
+│ 2. 历史行情查询   │  ← DailyPrice 表
+├─────────────────┤
+│ 3. 实时行情      │  ← 实时缓存
+├─────────────────┤
+│ 4. 网络资讯      │  ← 搜索引擎
+└─────────────────┘
+    │
+    ▼
+DeepSeek LLM 综合分析 → Markdown 回复
+```
 
 ---
 
 ## 💻 技术栈
-* **后端**: Django (Python 3.14.2)
-* **前端**: Bootstrap 5 + Chart.js (响应式金融看板)
-* **数据库**: MySQL / PostgreSQL (支持复杂事务处理)
-* **AI/算法**: PyTorch + AdaRHD-S 优化器
-* **开发环境**: WSL (Windows Subsystem for Linux) + VS Code
+
+| 层级 | 技术 |
+|------|------|
+| **后端框架** | Django 6.0.3 |
+| **前端** | Bootstrap 5.3 + Chart.js 4.4 + Marked.js |
+| **数据库** | SQLite（开发）/ MySQL（生产） |
+| **AI/ML** | FAISS + sentence-transformers + DeepSeek API |
+| **数据源** | 东方财富 A 股行情 |
+| **字体** | Inter + Georgia（Google Fonts） |
+| **Python 版本** | 3.13 |
 
 ---
 
-### 📦 安装与运行指南
+## 📦 安装与运行
 
-# 1. 克隆仓库并进入项目目录
+### 前置条件
+- Python 3.13+
+- Conda（推荐）或 venv
+
+### 快速开始
+
 ```bash
-git clone https://github.com/JQ-ux/DataBase_Project
+# 1. 克隆仓库
+git clone <your-repo-url>
 cd DataBase_Project
-```
 
-# 2. 创建并激活虚拟环境 (Windows)
-```bash
-python -m venv venv
-.\venv\Scripts\activate
-```
+# 2. 创建并激活环境
+conda create -n Py313 python=3.13 -y
+conda activate Py313
 
-# 3. 安装项目依赖与初始化数据库
-```bash
+# 3. 安装依赖
 pip install -r requirements.txt
+
+# 4. 初始化数据库
 python manage.py migrate
-```
 
-# 4. 启动 Django 开发服务器
-```bash
+# 5. 导入 A 股数据（可选，但建议执行）
+python ./Data/spider_pro.py        # 爬取最新行情
+python import_csv.py                # 导入 CSV 数据
+python manage.py populate_a_stocks --refresh  # 填充 A 股列表
+
+# 6. 配置环境变量
+# 创建 .env 文件，填入 DeepSeek API Key:
+# DEEPSEEK_API_KEY=your_key_here
+
+# 7. 启动服务器
 python manage.py runserver
+
+# 8. 访问系统
+# 浏览器打开 http://127.0.0.1:8000
 ```
 
-# 5. 访问系统：请在浏览器输入 http://127.0.0.1:8000
+---
+
+## 🎮 使用指南
+
+### 游客模式
+点击导航栏「游客模式」或登录页「游客模式浏览」即可免注册体验。
+
+### AI 对话
+在首页底部 AI 对话区域直接提问，例如：
+- "帮我分析一下当前市场整体走势"
+- "最近一周哪些板块表现最好？"
+- "000001 这只股票的财务情况如何？"
+- "推荐几只低市盈率且营收增长稳定的股票"
+
+### 浏览市场数据
+在「市场行情」区域可按行业筛选、搜索股票，点击「详情」查看完整财务指标。
+
+---
+
+## 🎨 设计系统
+
+本项目 UI 设计灵感来源于 [Heidi Health](https://www.heidihealth.com/en-gb) 登陆页，通过 Firecrawl 提取设计令牌后重新应用到金融场景：
+
+| 设计元素 | 取值 |
+|---------|------|
+| 主色调 | `#FBF582` 暖金 |
+| 辅色 | `#755760` 紫褐 |
+| 背景 | `#FCFAF8` 暖白 |
+| 标题字体 | Georgia（衬线） |
+| 正文字体 | Inter（无衬线） |
+| 按钮圆角 | 12px |
+
+完整设计文档见 [`DESIGN.md`](DESIGN.md)。
+
+---
+
+## 📁 项目结构
+
+```
+DataBase_Project/
+├── capstone/                  # Django 项目配置
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── stock/                     # 主应用
+│   ├── models.py              # 13 张数据表
+│   ├── views.py               # 业务逻辑 + API
+│   ├── urls.py                # 路由配置
+│   ├── templates/stock/       # Django 模板
+│   │   ├── base.html          # 基础布局
+│   │   ├── index.html         # 首页（AI 对话 + 行情浏览）
+│   │   ├── detail.html        # 股票详情
+│   │   ├── transactions.html  # 历史记录
+│   │   ├── login.html         # 登录页
+│   │   ├── register.html      # 注册页
+│   │   └── ...
+│   └── management/commands/   # 管理命令
+├── agents/                    # AI 智能体
+│   ├── brain.py               # RAG 推理引擎
+│   ├── memory.py              # 对话记忆
+│   └── tools.py               # 工具函数
+├── services/                  # 外部服务
+│   └── eastmoney_service.py   # 东方财富 API
+├── static/                    # 静态资源
+│   ├── css/style.css          # Heidi 风格样式
+│   └── js/                    # Chart.js 图表 + 搜索交互
+├── fonts/                     # 中文字体
+├── Data/                      # 数据采集脚本
+│   └── spider_pro.py
+├── DESIGN.md                  # 设计系统文档
+├── requirements.txt
+├── manage.py
+└── README.md
+```
+
+---
+
+## 🙏 致谢与许可
+
+### 原始项目
+本项目基于 [Nexent](https://github.com/ModelEngine-Group/nexent) by **Huawei Technologies Co., Ltd.** 改造而来，原始项目采用 MIT 许可证。
+
+### 设计灵感
+UI 设计灵感来源于 [Heidi Health](https://www.heidihealth.com/en-gb)，通过 [Firecrawl](https://www.firecrawl.dev) 提取设计令牌。
+
+### AI 模型
+智能投顾由 [DeepSeek](https://www.deepseek.com/) 大语言模型驱动。
+
+### 开源协议
+本项目继承原始项目的 [MIT License](LICENSE)。
+
+```
+MIT License
+
+Copyright (c) 2025 Huawei Technologies Co., Ltd. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction...
+```
+
+---
+
+## 🔗 相关链接
+
+- 原始项目：[Nexent](https://github.com/ModelEngine-Group/nexent)
+- 设计参考：[Heidi Health](https://www.heidihealth.com/en-gb)
+- 设计工具：[Firecrawl](https://www.firecrawl.dev)

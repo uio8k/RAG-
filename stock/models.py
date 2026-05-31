@@ -35,6 +35,10 @@ class Industry(models.Model):
     def __str__(self):
         return self.name
     
+# ==========================================
+# [DEPRECATED] Company Model - 已替换为 AShareStock
+# 保留此模型以兼容旧迁移，不再使用。
+# ==========================================
 class Company(models.Model):
     symbol = models.CharField(max_length=10, primary_key=True)
     full_name = models.CharField(max_length=255)
@@ -54,7 +58,7 @@ class Company(models.Model):
         return self.symbol
 
 class Financials(models.Model):
-    symbol = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='financials')
+    symbol = models.ForeignKey('AShareStock', on_delete=models.CASCADE, related_name='financials')
     report_date = models.DateField()
     total_revenue = models.BigIntegerField(null=True, blank=True)
     gross_profit = models.BigIntegerField(null=True, blank=True)
@@ -98,7 +102,7 @@ class Financials(models.Model):
         return 0
 
 class DailyPrice(models.Model):
-    symbol = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='daily_prices')
+    symbol = models.ForeignKey('AShareStock', on_delete=models.CASCADE, related_name='daily_prices')
     financial_id = models.ForeignKey(Financials, on_delete=models.SET_NULL, null=True, blank=True)
     trade_date = models.DateField()
     open_price = models.DecimalField(max_digits=12, decimal_places=4)
@@ -244,7 +248,7 @@ class TradeOrder(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     sim = models.ForeignKey(Simulation, on_delete=models.CASCADE, related_name='orders')
-    symbol = models.ForeignKey(Company, on_delete=models.CASCADE)
+    symbol = models.ForeignKey('AShareStock', on_delete=models.CASCADE)
     
     side = models.CharField(max_length=10, choices=OrderSide.choices)
     price = models.DecimalField(max_digits=12, decimal_places=4)
@@ -291,7 +295,7 @@ class Simulation_Transaction(models.Model):
         SELL = 'SELL', 'Sell'
 
     sim = models.ForeignKey(Simulation, on_delete=models.CASCADE, related_name='transactions')
-    symbol = models.ForeignKey(Company, on_delete=models.CASCADE)
+    symbol = models.ForeignKey('AShareStock', on_delete=models.CASCADE)
     daily_price = models.ForeignKey(DailyPrice, on_delete=models.SET_NULL, null=True)
     trade_date = models.DateField()
     type = models.CharField(max_length=4, choices=TransType.choices)
@@ -349,7 +353,7 @@ class Simulation_Cash_Flow(models.Model):
 # ==========================================
 class Simulation_Holding(models.Model):
     sim = models.ForeignKey(Simulation, on_delete=models.CASCADE, related_name='holdings')
-    symbol = models.ForeignKey(Company, on_delete=models.CASCADE)
+    symbol = models.ForeignKey('AShareStock', on_delete=models.CASCADE)
     quantity = models.IntegerField()
     avg_cost = models.DecimalField(max_digits=20, decimal_places=4)
     updated_at = models.DateTimeField(auto_now=True)
@@ -372,3 +376,74 @@ class Simulation_NAV_History(models.Model):
     def __str__(self):
         
         return f"{self.sim.name} - {self.record_date}"
+
+
+# ==========================================
+# 6. A-Share Stock Model (统一股票模型，替代 Company)
+# ==========================================
+class AShareStock(models.Model):
+    """
+    统一股票基本信息表（替代原 Company 模型）
+    存储 A 股全量列表，同时兼容原 Company 的所有字段。
+    """
+    symbol = models.CharField(max_length=10, primary_key=True, verbose_name="股票代码")
+    name = models.CharField(max_length=100, verbose_name="股票名称")
+    # === 原 Company 兼容字段 ===
+    industry = models.ForeignKey(
+        'Industry',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='a_stocks',
+        verbose_name="所属行业"
+    )
+    market = models.CharField(max_length=4, verbose_name="市场(SH/SZ/BJ)")
+    market_type = models.CharField(max_length=20, blank=True, null=True, verbose_name="板块类型")
+    total_market_cap = models.BigIntegerField(null=True, blank=True, verbose_name="总市值(元)")
+    trailing_pe = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="市盈率")
+    price_sales = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="市销率")
+    current_price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="最新价")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        verbose_name = "股票"
+        verbose_name_plural = "股票"
+        ordering = ['symbol']
+
+    @property
+    def full_name(self):
+        """兼容原 Company.full_name，返回 name"""
+        return self.name
+
+    def __str__(self):
+        return f"{self.symbol} {self.name}"
+
+
+class AShareRealtimePrice(models.Model):
+    """
+    A 股实时行情缓存表（来源：东方财富）
+    每次 fetch 更新，保留最新快照。
+    """
+    symbol = models.CharField(max_length=10, db_index=True, verbose_name="股票代码")
+    name = models.CharField(max_length=100, verbose_name="股票名称")
+    price = models.DecimalField(max_digits=12, decimal_places=4, verbose_name="最新价")
+    open_price = models.DecimalField(max_digits=12, decimal_places=4, verbose_name="开盘价")
+    high_price = models.DecimalField(max_digits=12, decimal_places=4, verbose_name="最高价")
+    low_price = models.DecimalField(max_digits=12, decimal_places=4, verbose_name="最低价")
+    pre_close = models.DecimalField(max_digits=12, decimal_places=4, verbose_name="昨收价")
+    volume = models.BigIntegerField(default=0, verbose_name="成交量(手)")
+    amount = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name="成交额")
+    change_pct = models.DecimalField(max_digits=8, decimal_places=4, default=0, verbose_name="涨跌幅(%)")
+    pe_ratio = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="市盈率")
+    fetched_at = models.DateTimeField(auto_now=True, verbose_name="抓取时间")
+
+    class Meta:
+        verbose_name = "A股实时行情"
+        verbose_name_plural = "A股实时行情"
+        indexes = [
+            models.Index(fields=['symbol']),
+            models.Index(fields=['-change_pct']),  # 按涨跌幅排序
+        ]
+
+    def __str__(self):
+        return f"{self.symbol} {self.name} ¥{self.price}"

@@ -1,4 +1,9 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# 0. 加载 .env 环境变量（必须在其他配置之前）
+load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 # 1. 基础路径定义
 BASE_DIR = Path(__file__).resolve().parent.parent

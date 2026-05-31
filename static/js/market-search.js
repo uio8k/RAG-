@@ -1,41 +1,60 @@
-// stock/static/js/market-search.js
+/**
+ * StockX Pro — Market Search & Real-time Filtering
+ * Provides client-side search and debounced industry filtering.
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('nav-search-input');
-    const resultsContainer = document.getElementById('search-results-dropdown');
+    // Look for the search form and add live filtering if present
+    const searchInput = document.querySelector('.search-form-inline input[name="q"]');
+    const industrySelect = document.querySelector('.search-form-inline select[name="industry"]');
 
+    // Auto-submit on industry change for better UX
+    if (industrySelect) {
+        industrySelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+
+    // Debounced search: submit after user stops typing for 500ms
     if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            if (query.length < 1) {
-                resultsContainer.style.display = 'none';
-                return;
-            }
+        let debounceTimer;
+        const originalForm = searchInput.closest('form');
 
-            fetch(`/api/search/?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    resultsContainer.innerHTML = '';
-                    if (data.length > 0) {
-                        data.forEach(item => {
-                            const div = document.createElement('a');
-                            div['className'] = 'dropdown-item d-flex justify-content-between align-items-center';
-                            div.href = `/stock/${item.symbol}/`;
-                            div.innerHTML = `
-                                <span><strong>${item.symbol}</strong> - ${item.name}</span>
-                                <span class="badge bg-light text-dark">$${item.price}</span>
-                            `;
-                            resultsContainer.appendChild(div);
-                        });
-                        resultsContainer.style.display = 'block';
-                    } else {
-                        resultsContainer.style.display = 'none';
-                    }
-                });
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                originalForm.submit();
+            }, 500);
         });
 
-        // 点击外部隐藏搜索框
-        document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target)) resultsContainer.style.display = 'none';
+        // Prevent normal form submit to avoid page reload during debounce
+        originalForm.addEventListener('submit', function(e) {
+            clearTimeout(debounceTimer);
+        });
+    }
+
+    // ===== Table Row Click: Navigate to Stock Detail =====
+    const marketTable = document.querySelector('.stockx-table');
+    if (marketTable) {
+        marketTable.addEventListener('click', function(e) {
+            const row = e.target.closest('tr');
+            if (!row) return;
+
+            // Find the detail link in the row
+            const detailLink = row.querySelector('a[href*="/stock/"]');
+            if (detailLink) {
+                // Don't navigate if user clicked the button itself
+                if (e.target.closest('a')) return;
+                window.location.href = detailLink.href;
+            }
+        });
+
+        // Add cursor pointer to table rows with links
+        const rows = marketTable.querySelectorAll('tbody tr');
+        rows.forEach(function(row) {
+            if (row.querySelector('a[href*="/stock/"]')) {
+                row.style.cursor = 'pointer';
+            }
         });
     }
 });

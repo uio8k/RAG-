@@ -10,7 +10,6 @@ urlpatterns = [
     # 1. Core Pages
     # ==========================================
     path("", views.index, name="index"),
-    path("portfolio/", views.portfolio_view, name="portfolio"),
     path("transactions/", views.transactions_view, name="transactions"),
 
     # ==========================================
@@ -19,6 +18,7 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path('accounts/login/', views.login_view),
     path("register/", views.register_view, name="register"),
+    path("guest/", views.guest_login_view, name="guest_login"),
     path("logout/", views.logout_view, name="logout"),
     path("api/current_sim/", views.current_sim),
 
@@ -26,7 +26,7 @@ urlpatterns = [
     # 3. Market Data
     # ==========================================
     path("stock/<str:symbol>/", views.stock_detail, name="stock_detail"),
-    path("stock/<str:symbol>/financials/", views.company_financials, name="company_financials"),
+    path("stock/<str:symbol>/financials/", views.stock_financials, name="stock_financials"),
     path("stock/<str:symbol>/history/", views.stock_history_full, name="stock_history"), 
 
     # ==========================================
@@ -44,7 +44,6 @@ urlpatterns = [
     # 5. Simulation Control
     # ==========================================
     path("simulation/advance/", views.advance_simulation_date, name="advance_date"),
-    path("simulation/report/", views.simulation_performance, name="simulation_performance"),
 
     # 6. Reports & Documents (New Section)
 

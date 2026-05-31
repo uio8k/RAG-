@@ -1,0 +1,22 @@
+{% extends "stock/base.html" %}
+
+{% block title %}服务器错误 — StockX Pro{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-page">
+                <div class="error-code">500</div>
+                <h2 class="error-title">服务器内部错误</h2>
+                <p class="error-desc">系统遇到了意外问题，我们的技术团队正在处理。请稍后再试。</p>
+                <div class="mt-4">
+                    <a href="{% url 'index' %}" class="btn btn-primary-custom">
+                        <i class="bi bi-house"></i> 返回交易终端
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

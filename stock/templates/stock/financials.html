@@ -1,0 +1,53 @@
+{% extends "stock/base.html" %}
+
+{% block title %}{{ stock.symbol }} — 深度财务分析 — StockX Pro{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <nav class="stockx-breadcrumb mb-3">
+        <a href="{% url 'index' %}"><i class="bi bi-house"></i> 交易终端</a>
+        <span class="separator">›</span>
+        <a href="{% url 'stock_detail' stock.symbol %}">{{ stock.symbol }}</a>
+        <span class="separator">›</span>
+        <span class="current">财务分析</span>
+    </nav>
+
+    <div class="card">
+        <div class="card-header-custom">
+            <h3 class="card-header-title">📊 {{ stock.symbol }} — 深度财务指标</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="table stockx-table">
+                <thead>
+                    <tr>
+                        <th>报告日期</th>
+                        <th>营业收入</th>
+                        <th>净利润</th>
+                        <th>净利率</th>
+                        <th>EPS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reports %}
+                    <tr>
+                        <td>{{ r.date|date:"Y-m-d" }}</td>
+                        <td>¥ {{ r.revenue|floatformat:0 }}</td>
+                        <td>¥ {{ r.income|floatformat:0 }}</td>
+                        <td>
+                            <span class="{% if r.margin > 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ r.margin }}%
+                            </span>
+                        </td>
+                        <td>{{ r.eps|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4 text-muted">暂无财务数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

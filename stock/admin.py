@@ -1,9 +1,9 @@
 from django.contrib import admin
 from .models import (
-    User, Company, Financials, DailyPrice, 
+    User, Financials, DailyPrice, 
     Simulation, Simulation_Transaction, 
     Simulation_NAV_History, Simulation_Holding, TradeOrder,
-    Industry
+    Industry, AShareStock, AShareRealtimePrice
 )
 
 # --- Industry Administration ---
@@ -16,16 +16,15 @@ class IndustryAdmin(admin.ModelAdmin):
     list_display = ('name', 'sector')
     search_fields = ('name', 'sector')
 
-# --- Company Administration ---
-@admin.register(Company)
-class CompanyAdmin(admin.ModelAdmin):
+# --- Stock Administration (统一股票模型，替代原 Company) ---
+@admin.register(AShareStock)
+class AShareStockAdmin(admin.ModelAdmin):
     """
-    Admin configuration for the Company model.
-    Includes industry relationship and market metrics.
+    统一股票管理（替代原 Company）
     """
-    list_display = ('symbol', 'full_name', 'industry', 'current_price', 'market_cap')
-    search_fields = ('symbol', 'full_name')
-    list_filter = ('industry',)
+    list_display = ('symbol', 'name', 'industry', 'market', 'market_type', 'current_price', 'total_market_cap', 'updated_at')
+    search_fields = ('symbol', 'name')
+    list_filter = ('market', 'market_type', 'industry')
 
 # --- Financials Administration ---
 @admin.register(Financials)
@@ -73,3 +72,10 @@ admin.site.register(Simulation_Transaction)
 admin.site.register(Simulation_NAV_History)
 admin.site.register(Simulation_Holding)
 admin.site.register(TradeOrder)
+
+# --- A-Share Realtime Price Administration ---
+@admin.register(AShareRealtimePrice)
+class AShareRealtimePriceAdmin(admin.ModelAdmin):
+    list_display = ('symbol', 'name', 'price', 'change_pct', 'pe_ratio', 'volume', 'fetched_at')
+    search_fields = ('symbol', 'name')
+    list_filter = ('fetched_at',)

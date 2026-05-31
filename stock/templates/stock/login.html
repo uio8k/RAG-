@@ -1,67 +1,63 @@
 {% extends "stock/base.html" %}
 
-{% block body %}
-<style>
-    /* 登录页单独覆盖全局背景为纯色或透明 */
-    body {
-        background: #000000 !important;  /* 深色背景，可替换为你想要的颜色 */
-        /* 或者 background: transparent !important; 如果想透出父级背景 */
-    }
-    /* 如果还想保留 .login-page 的半透明遮罩效果，可以保持原有样式 */
-</style>
-<!-- 关键修改：添加 login-page 类 -->
-<div class="login-page">
-  <div class="row justify-content-center align-items-center" style="min-height: 70vh; padding-top: 70px;">
-    <div class="col-md-4 login-form">
-      <div class="">
-        <div class="card-header text-white text-center py-4 border-0" style="background-color: #45455B; border-radius: 12px 12px 0 0;">
-          <i class="bi bi-shield-lock-fill fs-1"></i>
-          <h4 class="mt-2 fw-bold">StockX 账户登录</h4>
-        </div>
-        <div class="card-body p-4">
-          
-          {% if message %}
-            <div class="alert alert-danger d-flex align-items-center" role="alert">
-              <i class="bi bi-exclamation-triangle-fill me-2"></i>
-              <div>{{ message }}</div>
-            </div>
-          {% endif %}
+{% block title %}登录 — StockX Pro{% endblock %}
 
-          <form action="{% url 'login' %}" method="post">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-              <label for="username" class="form-label small fw-bold text-muted text-uppercase">用户名</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                <input class="form-control border-start-0 bg-light" type="text" id="username" name="username" placeholder="请输入您的账号" required autofocus>
-              </div>
-            </div>
-            
-            <div class="mb-4">
-              <label for="password" class="form-label small fw-bold text-muted text-uppercase">安全密码</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
-                <input class="form-control border-start-0 bg-light" type="password" id="password" name="password" placeholder="请输入密码" required>
-              </div>
-            </div>
-            
-            <button class="btn w-100 py-2 fw-bold shadow-sm" style="background-color: #45455B; border-color: #45455B; color: white;" type="submit">
-              进入交易终端
-            </button>
-          </form>
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card auth-card">
+                <div class="card-body text-center p-4">
+                    <div class="auth-icon mb-3">📈</div>
+                    <h2 class="auth-title">登录 StockX Pro</h2>
+                    <p class="auth-subtitle">金融交易仿真系统</p>
 
-          <div class="mt-4 text-center">
-            <p class="text-muted small mb-0">还没有实盘模拟账号？</p>
-            <a href="{% url 'register' %}" class="fw-bold text-decoration-none" style="color: #45455B;">立即注册领取 10万 模拟金 <i class="bi bi-arrow-right-short"></i></a>
-          </div>
+                    {% if message %}
+                    <div class="alert alert-danger text-start">
+                        <i class="bi bi-exclamation-triangle"></i> {{ message }}
+                    </div>
+                    {% endif %}
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger text-start">
+                        <i class="bi bi-exclamation-triangle"></i> 用户名或密码错误，请重试。
+                    </div>
+                    {% endif %}
+
+                    {% if next %}
+                        {% if user.is_authenticated %}
+                        <div class="alert alert-warning">您的账户没有访问此页面的权限。</div>
+                        {% else %}
+                        <div class="alert alert-info">请先登录以访问此页面。</div>
+                        {% endif %}
+                    {% endif %}
+
+                    <form method="POST" class="text-start">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">用户名</label>
+                            <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">密码</label>
+                            <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
+                        </div>
+                        <input type="hidden" name="next" value="{{ next }}">
+                        <button type="submit" class="btn btn-primary-custom w-100 mt-2">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </button>
+                    </form>
+
+                    <hr class="my-4">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'guest_login' %}" class="btn btn-outline-custom">
+                            <i class="bi bi-person"></i> 游客模式浏览
+                        </a>
+                    </div>
+                    <p class="text-muted mt-3">还没有账户？<a href="{% url 'register' %}" class="auth-link">立即注册</a></p>
+                </div>
+            </div>
         </div>
-      </div>
-      
-      <p class="text-center mt-4 text-muted" style="font-size: 0.75rem;">
-        <i class="bi bi-info-circle me-1"></i> 这是一个模拟练习系统，请勿输入真实银行账户信息。
-      </p>
     </div>
-  </div>
 </div>
 {% endblock %}

@@ -1,0 +1,158 @@
+{
+  "branding": {
+    "colorScheme": "dark",
+    "fonts": [
+      {
+        "family": "Plus Jakarta Sans",
+        "role": "body"
+      }
+    ],
+    "colors": {
+      "primary": "#0AF395",
+      "secondary": "#0CE48D",
+      "accent": "#0AF395",
+      "background": "#0B0F14",
+      "textPrimary": "#0B0F14",
+      "link": "#222D38"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Plus Jakarta Sans",
+        "heading": "Plus Jakarta Sans"
+      },
+      "fontStacks": {
+        "heading": [
+          "Plusjakartasans",
+          "sans-serif"
+        ],
+        "body": [
+          "Plusjakartasans",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "Plusjakartasans",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "40px",
+        "h2": "48px",
+        "body": "16px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "8px"
+    },
+    "components": {
+      "buttonPrimary": {
+        "background": "#0AF395",
+        "textColor": "#0B0F14",
+        "borderRadius": "10px",
+        "borderRadiusCorners": {
+          "topLeft": "10px",
+          "topRight": "10px",
+          "bottomRight": "10px",
+          "bottomLeft": "10px"
+        },
+        "shadow": "rgba(0, 0, 0, 0.4) 0px -1px 1px 0px inset"
+      },
+      "buttonSecondary": {
+        "background": "#FFFFFF",
+        "textColor": "#0B0F14",
+        "borderRadius": "10px",
+        "borderRadiusCorners": {
+          "topLeft": "10px",
+          "topRight": "10px",
+          "bottomRight": "10px",
+          "bottomLeft": "10px"
+        },
+        "shadow": "rgba(0, 0, 0, 0.4) 0px -1px 1px 0px inset"
+      }
+    },
+    "images": {
+      "logo": "https://saaspo.com/cdn-cgi/image/format=avif,quality=90/https://cdn.prod.website-files.com/639997ad49dddb11d0c0efba/63999cef3a2be35548de1227_saaspo%20logo%20white.svg",
+      "favicon": "https://cdn.prod.website-files.com/639997ad49dddb11d0c0efba/6399aaf5bfdf2726c3ce7305_saaspo%20icon%20-%20large.png",
+      "ogImage": "https://cdn.prod.website-files.com/6399d2d87f63ad4774e11dc2/6a0ec10714e71cded5468914_take---2026-05-21T092128.212.jpeg"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 2,
+      "reasoning": "Logo rejected: Red flags detected (menu word). Selected #2 because it is visible, medium-sized, located in the header, and links to the homepage, which are strong indicators of the main brand logo.",
+      "confidence": 0.95,
+      "rejected": true,
+      "source": "llm"
+    },
+    "__llm_button_reasoning": {
+      "primary": {
+        "index": 0,
+        "text": "Subscribe",
+        "reasoning": "Button #0 uses the vibrant brand color #0AF395, which is a strong indicator of a primary CTA. The text 'Subscribe' is action-oriented, making it a suitable primary call-to-action."
+      },
+      "secondary": {
+        "index": 2,
+        "text": "Subscribe",
+        "reasoning": "Button #2 has a different background color (#FFFFFF) and is labeled 'Subscribe', which complements the primary action. It is less visually prominent, making it suitable as a secondary button."
+      },
+      "confidence": 0.95
+    },
+    "personality": {
+      "tone": "modern",
+      "energy": "high",
+      "targetAudience": "tech-savvy professionals"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0.95,
+      "colors": 0.9,
+      "overall": 0.925
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 2,
+          "selectedLogoReasoning": "Selected #2 because it is visible, medium-sized, located in the header, and links to the homepage, which are strong indicators of the main brand logo.",
+          "confidence": 0.95
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": true,
+        "llmSucceeded": true
+      }
+    }
+  },
+  "metadata": {
+    "generator": "Webflow",
+    "twitter:description": "A curated collection of the best SaaS websites on the web.",
+    "description": "A curated collection of the best SaaS websites on the web.",
+    "ogTitle": "Saaspo | Heidi Landing Page",
+    "og:image": "https://cdn.prod.website-files.com/6399d2d87f63ad4774e11dc2/6a0ec10714e71cded5468914_take---2026-05-21T092128.212.jpeg",
+    "og:description": "A curated collection of the best SaaS websites on the web.",
+    "ogDescription": "A curated collection of the best SaaS websites on the web.",
+    "twitter:card": "summary_large_image",
+    "og:title": "Saaspo | Heidi Landing Page",
+    "title": "Saaspo | Heidi Landing Page",
+    "ogImage": "https://cdn.prod.website-files.com/6399d2d87f63ad4774e11dc2/6a0ec10714e71cded5468914_take---2026-05-21T092128.212.jpeg",
+    "twitter:title": "Saaspo | Heidi Landing Page",
+    "twitter:image": "https://cdn.prod.website-files.com/6399d2d87f63ad4774e11dc2/6a0ec10714e71cded5468914_take---2026-05-21T092128.212.jpeg",
+    "facebook-domain-verification": "mlk59ybu44651lzcbhhxjfl8vfae8q",
+    "og:type": "website",
+    "viewport": "width=device-width, initial-scale=1",
+    "favicon": "https://cdn.prod.website-files.com/639997ad49dddb11d0c0efba/6399aaf5bfdf2726c3ce7305_saaspo%20icon%20-%20large.png",
+    "scrapeId": "019e7c2b-11e7-730a-bfbb-ba9a9536ea12",
+    "sourceURL": "https://saaspo.com/pages/heidi-landing-page",
+    "url": "https://saaspo.com/pages/heidi-landing-page",
+    "statusCode": 200,
+    "contentType": "text/html; charset=utf-8",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "03354e0c-3a96-453a-8e2f-0b79dbfccdb3",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  }
+}

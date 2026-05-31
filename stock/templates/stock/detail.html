@@ -1,357 +1,217 @@
 {% extends "stock/base.html" %}
 {% load static %}
-{% block body %}
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<style>
-    /* 盘口行悬停效果 */
-    .depth-row { transition: all 0.2s; cursor: pointer; }
-    .depth-row:hover { background-color: rgba(0,0,0,0.08) !important; transform: scale(1.01); }
-    .x-small { font-size: 0.75rem; }
-    /* 自定义蓝色线条 */
-    .accent-line { border-left: 5px solid #3498db !important; }
-    /* 粘性侧边栏位置微调 */
-    .sticky-panel { top: 20px; }
-</style>
+{% block title %}{{ company.symbol }} — 股票详情 — StockX Pro{% endblock %}
 
-<div class="container mt-4" style="padding-top: 70px;">
-    <div class="card border-0 shadow-sm mb-4 accent-line">
-        <div class="card-body d-flex justify-content-between align-items-center py-4">
-            <div>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-1">
-                        <li class="breadcrumb-item"><a href="{% url 'index' %}" class="text-decoration-none">市场终端</a></li>
-                        <li class="breadcrumb-item active">{{ company.symbol }}</li>
-                    </ol>
-                </nav>
-                <h1 class="fw-bold mb-0 text-dark">
-                    {{ company.symbol }} 
-                    <span class="fs-4 text-muted fw-normal">| {{ company.full_name }}</span>
-                    <!-- 插入图片 -->
-                    <img src="{% static 'img/companies/'|add:company.symbol|lower|add:'.png' %}" 
-                         alt="{{ company.full_name }} logo"
-                         class="company-logo">
-                </h1>
-                <div class="mt-2">
-                    <span class="badge bg-success small">交易中 ({{ sim.current_virtual_date|date:"Y-m-d" }})</span>
-                    <span class="ms-2 text-muted small"><i class="bi bi-clock me-1"></i>下一结算日：{{ sim.current_virtual_date|date:"Y-m-d" }} 15:00</span>
+{% block content %}
+<div class="container py-4">
+
+    {# 面包屑导航 #}
+    <nav class="stockx-breadcrumb mb-3">
+        <a href="{% url 'index' %}"><i class="bi bi-house"></i> 交易终端</a>
+        <span class="separator">›</span>
+        <span class="current">{{ company.symbol }}</span>
+    </nav>
+
+    {# 股票头部信息 #}
+    <div class="card stock-header-card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="stock-title">{{ company.symbol }}</h1>
+                    <p class="stock-name">{{ company.full_name }}</p>
+                    <span class="badge badge-market {% if is_market_open %}open{% else %}closed{% endif %}">
+                        {% if is_market_open %}● 交易中{% else %}○ 已收盘{% endif %}
+                    </span>
                 </div>
-            </div>
-            <div class="text-end">
-                <span class="text-muted small d-block">当前模拟价 (昨收)</span>
-                <h2 class="fw-bold text-primary mb-0" id="live-price">¥{{ current_price|floatformat:2 }}</h2>
+                <div class="col-md-6 text-md-end">
+                    <div class="stock-price-large">¥ {{ current_price|floatformat:2 }}</div>
+                    <div class="stock-date">数据截止: {{ virtual_today|date:"Y-m-d" }}</div>
+                    {% if holding %}
+                    <div class="holding-badge mt-2">
+                        <i class="bi bi-briefcase"></i> 持仓: {{ holding.quantity }} 股
+                        <span class="ms-2">成本: ¥ {{ holding.avg_cost|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 
+    {# 财务指标图表 #}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card chart-card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">📈 财务指标趋势</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="financialChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# 财务报告表格 #}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">📋 财务报告</h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table stockx-table">
+                        <thead>
+                            <tr>
+                                <th>报告日期</th>
+                                <th>营业收入</th>
+                                <th>净利润</th>
+                                <th>资产负债率</th>
+                                <th>流动比率</th>
+                                <th>速动比率</th>
+                                <th>EPS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in financials %}
+                            <tr>
+                                <td>{{ f.report_date|date:"Y-m-d" }}</td>
+                                <td>¥ {{ f.total_revenue|floatformat:0 }}</td>
+                                <td>¥ {{ f.net_income|floatformat:0 }}</td>
+                                <td>{{ f.debt_asset_ratio|floatformat:2 }}%</td>
+                                <td>{{ f.current_ratio|floatformat:2 }}</td>
+                                <td>{{ f.quick_ratio|floatformat:2 }}</td>
+                                <td>{{ f.basic_eps|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center py-4 text-muted">暂无财务数据</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# 操作区 — 挂单 + 快速链接 #}
     <div class="row">
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-layers text-info me-2"></i>盘口深度 (实时委托)</h5>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">📝 当前挂单</h3>
                 </div>
-                <div class="card-body p-0">
-                    <div class="row g-0">
-                        <div class="col-md-6 border-end">
-                            <table class="table table-sm mb-0">
-                                <thead class="table-light">
-                                    <tr><th colspan="3" class="text-center text-danger py-2">卖盘 (ASK)</th></tr>
-                                    <tr class="x-small text-muted text-uppercase">
-                                        <th class="ps-3">层级</th><th>价格</th><th class="text-end pe-3">数量</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for order in sell_orders %}
-                                    <tr class="depth-row table-danger-subtle" onclick="quickFill('{{ order.price }}')">
-                                        <td class="ps-3 text-danger">卖 {{ forloop.revcounter }}</td>
-                                        <td class="fw-bold">¥{{ order.price|floatformat:2 }}</td>
-                                        <td class="text-end pe-3">{{ order.quantity }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr><td colspan="3" class="text-center py-5 text-muted">暂无卖方委托</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-sm mb-0">
-                                <thead class="table-light">
-                                    <tr><th colspan="3" class="text-center text-success py-2">买盘 (BID)</th></tr>
-                                    <tr class="x-small text-muted text-uppercase">
-                                        <th class="ps-3">层级</th><th>价格</th><th class="text-end pe-3">数量</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for order in buy_orders %}
-                                    <tr class="depth-row table-success-subtle" onclick="quickFill('{{ order.price }}')">
-                                        <td class="ps-3 text-success">买 {{ forloop.counter }}</td>
-                                        <td class="fw-bold">¥{{ order.price|floatformat:2 }}</td>
-                                        <td class="text-end pe-3">{{ order.quantity }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr><td colspan="3" class="text-center py-5 text-muted">暂无买方委托</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-white text-center py-2">
-                    <small class="text-muted"><i class="bi bi-mouse me-1"></i>点击盘口价格可自动填入下方表单</small>
-                </div>
-            </div>
-
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>历史记录</h5>
-                    <a href="{% url 'stock_history' company.symbol %}" class="btn btn-sm btn-outline-secondary">完整数据</a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 400px;">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">日期</th>
-                                    <th>成交价 (CNY)</th>
-                                    <th>成交量</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in history %}
-                                <tr>
-                                    <td class="ps-4 text-muted">{{ item.trade_date|date:"Y-m-d" }}</td>
-                                    <td class="fw-bold">¥{{ item.close_price|floatformat:2 }}</td>
-                                    <td>{{ item.volume|default:"--" }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="3" class="text-center py-5 text-muted">该日期前无公开数据</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-pie-chart text-warning me-2"></i>财务比率趋势</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="input-group input-group-sm" style="width: 350px;">
-                            <span class="input-group-text bg-light text-muted x-small">f(x)=</span>
-                            <input type="text" id="custom-formula-input" class="form-control" 
-                                   placeholder="e.g. net_income / total_revenue" 
-                                   value="net_income / total_assets">
-                            <button class="btn btn-primary" type="button" id="btn-calculate-formula">
-                                <i class="bi bi-play-fill"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div style="height: 320px; width: 100%;">
-                        <canvas id="ratioChart"></canvas>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table stockx-table">
+                        <thead><tr><th>价格</th><th>数量</th><th>方向</th><th>状态</th></tr></thead>
+                        <tbody>
+                            {% for o in pending_orders %}
+                            <tr>
+                                <td>¥ {{ o.price|floatformat:2 }}</td>
+                                <td>{{ o.quantity }}</td>
+                                <td><span class="badge {% if o.direction == 'BUY' %}bg-success{% else %}bg-danger{% endif %}">{{ o.direction }}</span></td>
+                                <td>{{ o.status }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-3">暂无挂单</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-
-        <div class="col-lg-4">
-            {% if holding %}
-            <div class="card border-0 shadow-sm mb-3 bg-dark text-white">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h3 class="card-header-title">🔗 快捷导航</h3>
+                </div>
                 <div class="card-body">
-                    <h6 class="small text-secondary mb-3">POSITIONS | 当前持仓</h6>
-                    <div class="row text-center">
-                        <div class="col border-end border-secondary">
-                            <div class="fs-4 fw-bold text-info">{{ holding.quantity }}</div>
-                            <div class="x-small text-secondary">股数</div>
-                        </div>
-                        <div class="col">
-                            <div class="fs-4 fw-bold text-info">¥{{ holding.avg_cost|floatformat:2 }}</div>
-                            <div class="x-small text-secondary">持仓成本</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="card shadow-sm border-0 sticky-panel">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4">创建委托单</h5>
-                    
-                    <form id="transactionForm" method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="sim_id" value="{{ sim.id }}">
-                        <input type="hidden" name="symbol" value="{{ company.symbol }}">
-                        
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">委托价格 (LIMIT)</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-2 border-end-0">¥</span>
-                                <input type="number" step="0.01" name="price" id="inputPrice" 
-                                       class="form-control form-control-lg border-2" 
-                                       placeholder="{{ current_price|floatformat:2 }}" required>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label small fw-bold text-muted">委托数量 (QTY)</label>
-                            <div class="input-group">
-                                <input type="number" name="quantity" class="form-control form-control-lg border-2" 
-                                       placeholder="100" min="1" required>
-                                <span class="input-group-text bg-light border-2 border-start-0">股</span>
-                            </div>
-                        </div>
-
-                        <div class="row g-2">
-                            <div class="col">
-                                <button type="button" onclick="handleTrade('BUY')" class="btn btn-danger btn-lg w-100 py-3 fw-bold shadow-sm">买入</button>
-                            </div>
-                            <div class="col">
-                                <button type="button" onclick="handleTrade('SELL')" class="btn btn-success btn-lg w-100 py-3 fw-bold shadow-sm">卖出</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="card-footer bg-light border-top-0 p-4 pt-0 text-center">
-                    <hr class="my-3 opacity-10">
-                    <div class="d-flex justify-content-between small mb-2">
-                        <span class="text-muted">可用现金:</span>
-                        <span class="text-primary fw-bold">¥{{ sim.available_cash|floatformat:2 }}</span>
-                    </div>
-                    <div class="badge bg-secondary-subtle text-secondary w-100 py-2">
-                        <i class="bi bi-shield-check me-1"></i>撮合模式 | T+1 结算
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'stock_history' company.symbol %}" class="btn btn-outline-custom">
+                            <i class="bi bi-graph-up"></i> 查看历史行情
+                        </a>
+                        <a href="{% url 'stock_financials' company.symbol %}" class="btn btn-outline-custom">
+                            <i class="bi bi-file-earmark-bar-graph"></i> 深度财务分析
+                        </a>
+                        <a href="{% url 'index' %}" class="btn btn-outline-custom">
+                            <i class="bi bi-arrow-left"></i> 返回交易终端
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+{% block extra_scripts %}
 <script>
-    // 1. 快速填单功能
-    function quickFill(price) {
-        const priceInput = document.getElementById('inputPrice');
-        if (priceInput) {
-            priceInput.value = parseFloat(price).toFixed(2);
-            priceInput.style.backgroundColor = '#fff3cd';
-            setTimeout(() => { priceInput.style.backgroundColor = ''; }, 200);
-        }
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('financialChart').getContext('2d');
 
-    // 2. 核心交易处理逻辑 (优雅弹窗版)
-    function handleTrade(side) {
-        const form = document.getElementById('transactionForm');
-        
-        // 验证表单填写
-        if (!form.reportValidity()) return;
+    const labels = {{ chart_dates_json|safe }};
+    const debtData = {{ debt_ratios_json|safe }};
+    const currentData = {{ current_ratios_json|safe }};
+    const quickData = {{ quick_ratios_json|safe }};
 
-        const formData = new FormData(form);
-        formData.append('type', side);
-
-        // 弹出加载框
-        Swal.fire({
-            title: '正在提交委托...',
-            text: '请稍候，正在为您撮合交易',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
-
-        // 异步请求后端
-        fetch("{% url 'process_transaction' %}", {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // 成功提示
-                Swal.fire({
-                    icon: 'success',
-                    title: '委托已受理',
-                    text: data.message || '您的订单已成功成交！',
-                    confirmButtonText: '确定',
-                    timer: 2000
-                }).then(() => {
-                    location.reload(); // 成功后刷新页面
-                });
-            } else {
-                // 失败提示 (例如余额不足、超出涨跌停)
-                Swal.fire({
-                    icon: 'error',
-                    title: '交易受阻',
-                    text: data.message || data.error || '未知错误，请检查输入',
-                    confirmButtonText: '返回修改'
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: '网络连接失败',
-                text: '无法连接到交易服务器，请稍后再试。'
-            });
-        });
-    }
-
-    // 3. 财务图表逻辑
-    const chartLabels = {{ chart_dates_json|safe }};
-    const ctx = document.getElementById('ratioChart').getContext('2d');
-    
-    let ratioChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels: chartLabels, datasets: [] },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'top' } },
-            scales: {
-                y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-
-    document.getElementById('btn-calculate-formula').addEventListener('click', function() {
-        const formulaInput = document.getElementById('custom-formula-input');
-        const formula = formulaInput.value;
-        const symbol = "{{ company.symbol }}";
-        const btn = this;
-        const originalHtml = btn.innerHTML;
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-        fetch(`/api/v1/indicators/calculate/?symbol=${symbol}&formula=${encodeURIComponent(formula)}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    Swal.fire('计算失败', data.error, 'warning');
-                } else {
-                    ratioChart.data.datasets = [{
-                        label: formula,
-                        data: data.values,
-                        borderColor: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+    if (labels.length > 0) {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '资产负债率',
+                        data: debtData,
+                        borderColor: '#D93A3A',
+                        backgroundColor: 'rgba(217,58,58,0.08)',
                         fill: true,
-                        tension: 0.3
-                    }];
-                    ratioChart.update();
+                        tension: 0.3,
+                        borderWidth: 2,
+                    },
+                    {
+                        label: '流动比率',
+                        data: currentData,
+                        borderColor: '#2FA84F',
+                        backgroundColor: 'rgba(47,168,79,0.08)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                    },
+                    {
+                        label: '速动比率',
+                        data: quickData,
+                        borderColor: '#755760',
+                        backgroundColor: 'rgba(117,87,96,0.08)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    tooltip: {
+                        backgroundColor: '#FFF',
+                        titleColor: '#28030F',
+                        bodyColor: '#28030F',
+                        borderColor: '#EDE8E4',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                    }
+                },
+                scales: {
+                    y: { grid: { color: 'rgba(0,0,0,0.04)' } },
+                    x: { grid: { display: false } }
                 }
-            })
-            .catch(error => {
-                Swal.fire('错误', '服务器连接失败', 'error');
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            });
-    });
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
