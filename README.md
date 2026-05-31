@@ -123,7 +123,7 @@ DeepSeek LLM 综合分析 → Markdown 回复
 
 ```bash
 # 1. 克隆仓库
-git clone <your-repo-url>
+git clone https://github.com/uio8k/RAG-
 cd DataBase_Project
 
 # 2. 创建并激活环境
@@ -173,8 +173,6 @@ python manage.py runserver
 
 ## 🎨 设计系统
 
-本项目 UI 设计灵感来源于 [Heidi Health](https://www.heidihealth.com/en-gb) 登陆页，通过 Firecrawl 提取设计令牌后重新应用到金融场景：
-
 | 设计元素 | 取值 |
 |---------|------|
 | 主色调 | `#FBF582` 暖金 |
@@ -183,10 +181,6 @@ python manage.py runserver
 | 标题字体 | Georgia（衬线） |
 | 正文字体 | Inter（无衬线） |
 | 按钮圆角 | 12px |
-
-完整设计文档见 [`DESIGN.md`](DESIGN.md)。
-
----
 
 ## 📁 项目结构
 
@@ -221,7 +215,6 @@ DataBase_Project/
 ├── fonts/                     # 中文字体
 ├── Data/                      # 数据采集脚本
 │   └── spider_pro.py
-├── DESIGN.md                  # 设计系统文档
 ├── requirements.txt
 ├── manage.py
 └── README.md
