@@ -1,4 +1,4 @@
-# StockX Pro — RAG 金融 AI 投顾助手
+# StockX Pro — RAG 金融 AI 投顾
 
 [![Python](https://img.shields.io/badge/python-3.13-blue)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-6.0-green)](https://www.djangoproject.com/)
