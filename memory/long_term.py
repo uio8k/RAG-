@@ -26,9 +26,17 @@ class LongTermMemory(BaseMemory):
             name="long_term_memory",
             metadata={"hnsw:space": "cosine"}
         )
-        self.embedder = SentenceTransformer(embedding_model)
+        # 延迟加载：只在首次 encode 时下载模型
+        self._embedder = None
+        self._embedding_model = embedding_model
         self.sqlite_path = sqlite_path
         self._init_sqlite()
+
+    def _get_embedder(self):
+        """延迟加载 SentenceTransformer，避免初始化时必须联网"""
+        if self._embedder is None:
+            self._embedder = SentenceTransformer(self._embedding_model)
+        return self._embedder
 
     def _init_sqlite(self):
         conn = sqlite3.connect(self.sqlite_path)
@@ -66,7 +74,7 @@ class LongTermMemory(BaseMemory):
         memory.updated_at = datetime.now()
 
         # 写入 ChromaDB
-        embedding = self.embedder.encode(memory.content).tolist()
+        embedding = self._get_embedder().encode(memory.content).tolist()
         self.collection.add(
             ids=[memory.id],
             embeddings=[embedding],
@@ -139,7 +147,7 @@ class LongTermMemory(BaseMemory):
         if memory_type:
             where["memory_type"] = memory_type
 
-        embedding = self.embedder.encode(query).tolist()
+        embedding = self._get_embedder().encode(query).tolist()
         results = self.collection.query(
             query_embeddings=[embedding],
             n_results=top_k,

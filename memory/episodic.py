@@ -129,23 +129,25 @@ class EpisodicMemory(BaseMemory):
 
     def clear(self, agent_id: Optional[str] = None) -> int:
         import shutil
+
+        def _count_lines(directory: Path) -> int:
+            total = 0
+            for jsonl_file in directory.rglob("*.jsonl"):
+                with open(jsonl_file, "r", encoding="utf-8") as f:
+                    total += sum(1 for _ in f)
+            return total
+
         if agent_id:
             agent_dir = self.base_path / agent_id
             if agent_dir.exists():
-                count = sum(
-                    1 for _ in agent_dir.rglob("*.jsonl")
-                    for _ in open(_, "r", encoding="utf-8")
-                )
+                count = _count_lines(agent_dir)
                 shutil.rmtree(agent_dir)
                 return count
             return 0
         count = 0
         for agent_dir in self.base_path.iterdir():
             if agent_dir.is_dir():
-                count += sum(
-                    1 for _ in agent_dir.rglob("*.jsonl")
-                    for _ in open(_, "r", encoding="utf-8")
-                )
+                count += _count_lines(agent_dir)
         shutil.rmtree(self.base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
         return count

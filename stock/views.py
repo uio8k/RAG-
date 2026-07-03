@@ -33,6 +33,7 @@ from django.http import HttpResponse
 import io
 import uuid
 from agents.brain import FinancialBrain
+from memory.manager import MemoryManager
 
 
 # === AI 引擎懒加载（避免所有 Django 命令都加载模型） ===
@@ -51,6 +52,31 @@ def get_ada_brain():
             print(f"--- [Warning] AI 引擎初始化失败: {e} ---")
             _ada_init_failed = True
     return _ada_brain
+
+
+# === Agent Memory Hub 懒加载 ===
+_memory_manager = None
+
+
+def get_memory_manager():
+    """懒加载获取 MemoryManager 单例，仅在首次 AI 对话时初始化
+    
+    如果 LongTermMemory 无法加载嵌入模型（无网络），自动降级为纯短期记忆模式。
+    """
+    global _memory_manager
+    if _memory_manager is None:
+        print("--- [MemoryHub] 正在初始化 Agent Memory Hub... ---")
+        try:
+            _memory_manager = MemoryManager()
+            # 触发长期记忆初始化（检测嵌入模型是否可用）
+            if _memory_manager.long_term:
+                _memory_manager.long_term._get_embedder()
+            print("--- [MemoryHub] 完整模式初始化完成 (短期 + 长期 + 工作 + 情景) ---")
+        except Exception as e:
+            print(f"--- [MemoryHub] 长期记忆不可用 ({e})，降级为纯短期记忆模式 ---")
+            _memory_manager = MemoryManager(long_term=None)
+        print("--- [MemoryHub] 初始化完成 ---")
+    return _memory_manager
 
 
 FONT_PATH = r"C:\Users\24300\Desktop\Stock\fonts\msyh.ttc"
@@ -1492,7 +1518,12 @@ def generate_transaction_pdf(request, transaction_id):
 @login_required
 def ai_chat_api(request):
     """
-    AI 助手对话 API 接口
+    AI 助手对话 API 接口（已集成 Agent Memory Hub 记忆管理）
+    
+    每次对话自动：
+      1. 检索用户历史记忆 → 注入上下文
+      2. 调用 AI 引擎推理
+      3. 将本轮 Q&A 写入记忆
     """
     if request.method != "POST":
         return JsonResponse({"error": "仅支持 POST 请求"}, status=405)
@@ -1510,9 +1541,34 @@ def ai_chat_api(request):
         if not brain:
             return JsonResponse({"reply": "抱歉，AI 引擎暂时离线，请检查 DeepSeek API 配置。"})
 
-        # 3. 让 Agent 思考 (它会自动处理你的虚拟日期和持仓)
+        # ============ 🔑 Agent Memory Hub 集成 ============
+        mm = get_memory_manager()
+        user_id = str(request.user.id)
+
+        # 2.5 检索用户历史记忆作为上下文
+        past_context = mm.get_llm_context(user_id, query=user_message)
+
+        # 把历史上下文拼到用户消息前面
+        if past_context:
+            enriched_message = (
+                f"以下是用户之前的对话历史和相关信息，请参考：\n\n"
+                f"{past_context}\n\n"
+                f"---\n"
+                f"用户当前问题: {user_message}"
+            )
+        else:
+            enriched_message = user_message
+        # ==================================================
+
+        # 3. 让 Agent 思考
         print(f"--- [AI Request] 用户 {request.user.username} 提问: {user_message} ---")
-        ai_reply = brain.think(request.user, user_message)
+        ai_reply = brain.think(request.user, enriched_message)
+
+        # ============ 🔑 记住本轮对话 ============
+        mm.remember(user_id, "default", "user", user_message)
+        mm.remember(user_id, "default", "assistant", ai_reply)
+        print(f"--- [MemoryHub] 已记住用户 {request.user.username} 的对话 ---")
+        # =======================================
 
         return JsonResponse({
             "reply": ai_reply,
@@ -1521,5 +1577,5 @@ def ai_chat_api(request):
 
     except Exception as e:
         import traceback
-        traceback.print_exc() # 在终端打印错误详情方便调试
+        traceback.print_exc()
         return JsonResponse({"reply": f"我的大脑出了一点小状况: {str(e)}"}, status=500)

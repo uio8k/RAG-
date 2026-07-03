@@ -29,16 +29,21 @@ class MemoryManager:
 
         # 获取对话上下文（给 LLM）
         context = manager.get_llm_context("user_123")
+
+        # 不带长期记忆（离线测试）
+        manager = MemoryManager(long_term=None)
     """
+
+    _SENTINEL = object()
 
     def __init__(self,
                  short_term: Optional[ShortTermMemory] = None,
-                 long_term: Optional[LongTermMemory] = None,
+                 long_term: Optional[LongTermMemory] = _SENTINEL,
                  working: Optional[WorkingMemory] = None,
                  episodic: Optional[EpisodicMemory] = None):
 
         self.short_term = short_term or ShortTermMemory()
-        self.long_term = long_term or LongTermMemory()
+        self.long_term = LongTermMemory() if long_term is MemoryManager._SENTINEL else long_term
         self.working = working or WorkingMemory()
         self.episodic = episodic or EpisodicMemory()
 
@@ -65,8 +70,9 @@ class MemoryManager:
         )
 
         self.short_term.add(memory)
-        memory_id = self.long_term.add(memory)
-        self.episodic.add(memory)
+        memory_id = self.long_term.add(memory) if self.long_term else memory.id
+        if self.episodic:
+            self.episodic.add(memory)
         return memory_id
 
     def recall(self, agent_id: str, query: str,
@@ -76,7 +82,7 @@ class MemoryManager:
         """检索记忆（混合检索）"""
         results = []
 
-        if include_long_term:
+        if include_long_term and self.long_term:
             long_results = self.long_term.search(
                 query, top_k=top_k, agent_id=agent_id
             )
@@ -102,7 +108,9 @@ class MemoryManager:
 
     def recall_facts(self, agent_id: str, limit: int = 20) -> list[Memory]:
         """获取已存储的事实/偏好"""
-        return self.long_term.get_by_agent(agent_id, limit=limit)
+        if self.long_term:
+            return self.long_term.get_by_agent(agent_id, limit=limit)
+        return []
 
     def get_llm_context(self, agent_id: str,
                         query: Optional[str] = None,
@@ -117,7 +125,7 @@ class MemoryManager:
         if short_context:
             parts.append(f"## 对话历史\n{short_context}")
 
-        if query:
+        if query and self.long_term:
             long_memories = self.long_term.search(
                 query, top_k=long_term_top_k, agent_id=agent_id
             )
@@ -136,12 +144,14 @@ class MemoryManager:
         """遗忘"""
         if memory_id:
             self.short_term.delete(memory_id)
-            self.long_term.delete(memory_id)
+            if self.long_term:
+                self.long_term.delete(memory_id)
             return 1
         else:
             count = 0
             count += self.short_term.clear(agent_id)
-            count += self.long_term.forget_by_agent(agent_id)
+            if self.long_term:
+                count += self.long_term.forget_by_agent(agent_id)
             count += self.working.clear(agent_id)
             return count
 
@@ -156,9 +166,11 @@ class MemoryManager:
     def consolidate(self, agent_id: str, llm_call: Callable,
                     clear_after: bool = False) -> Optional[str]:
         """手动触发记忆整合"""
-        return self.consolidator.consolidate_sync(
-            agent_id, llm_call, clear_after
-        )
+        if self.long_term:
+            return self.consolidator.consolidate_sync(
+                agent_id, llm_call, clear_after
+            )
+        return None
 
     # ==================== 统计 ====================
 
@@ -170,7 +182,7 @@ class MemoryManager:
                     len(dq) for dq in self.short_term._stores.values()
                 )
             ),
-            "long_term_count": self.long_term.count(agent_id),
+            "long_term_count": self.long_term.count(agent_id) if self.long_term else 0,
             "working_count": (
                 len(self.working._stores.get(agent_id, {}))
                 if agent_id else sum(

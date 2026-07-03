@@ -1,4 +1,5 @@
 """记忆整合模块：定期将短期记忆总结压缩到长期记忆"""
+import asyncio
 from typing import Callable, Optional
 
 from .base import Memory
@@ -16,7 +17,7 @@ class MemoryConsolidator:
 
     def __init__(self,
                  short_term: ShortTermMemory,
-                 long_term: LongTermMemory,
+                 long_term: Optional[LongTermMemory] = None,
                  episodic: Optional[EpisodicMemory] = None,
                  trigger_count: int = 20,
                  summary_prompt: Optional[str] = None):
@@ -57,17 +58,18 @@ class MemoryConsolidator:
         prompt = self.summary_prompt.format(conversation=conversation)
         summary = llm_call(prompt)
 
-        memory = Memory(
-            agent_id=agent_id,
-            memory_type="consolidation",
-            content=summary,
-            importance=0.8,
-            metadata={
-                "source": "consolidation",
-                "original_count": len(recent),
-            }
-        )
-        self.long_term.add(memory)
+        if self.long_term:
+            memory = Memory(
+                agent_id=agent_id,
+                memory_type="consolidation",
+                content=summary,
+                importance=0.8,
+                metadata={
+                    "source": "consolidation",
+                    "original_count": len(recent),
+                }
+            )
+            self.long_term.add(memory)
 
         if self.episodic:
             self.episodic.log_interaction(
@@ -89,5 +91,49 @@ class MemoryConsolidator:
     async def consolidate(self, agent_id: str, llm_call: Callable,
                           clear_after: bool = False) -> Optional[str]:
         """异步版本（如果 LLM 调用是异步的）"""
-        # 异步版本与同步版本逻辑相同，只是调用方式不同
-        return self.consolidate_sync(agent_id, llm_call, clear_after)
+        recent = self.short_term.get_recent(agent_id, limit=self.trigger_count)
+        if not recent:
+            return None
+
+        conversation = "\n".join([
+            f"[{m.metadata.get('role', 'unknown')}]: {m.content}"
+            for m in recent
+        ])
+
+        prompt = self.summary_prompt.format(conversation=conversation)
+
+        # 检测 llm_call 是否为协程函数，分别处理
+        if asyncio.iscoroutinefunction(llm_call):
+            summary = await llm_call(prompt)
+        else:
+            summary = llm_call(prompt)
+
+        if self.long_term:
+            memory = Memory(
+                agent_id=agent_id,
+                memory_type="consolidation",
+                content=summary,
+                importance=0.8,
+                metadata={
+                    "source": "consolidation",
+                    "original_count": len(recent),
+                }
+            )
+            self.long_term.add(memory)
+
+        if self.episodic:
+            self.episodic.log_interaction(
+                agent_id, "system",
+                "consolidation",
+                f"记忆整合完成：将 {len(recent)} 条短期记忆压缩为 1 条长期记忆"
+            )
+
+        self._counters[agent_id] = len(
+            self.short_term._stores.get(agent_id, [])
+        )
+
+        if clear_after:
+            self.short_term.clear(agent_id)
+            self._counters[agent_id] = 0
+
+        return summary

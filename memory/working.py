@@ -31,7 +31,7 @@ class WorkingMemory(BaseMemory):
         store[key] = memory
         return memory.id
 
-    def get_value(self, agent_id: str, key: str) -> Optional[str]:
+    def get_value(self, agent_id: str, key: str) -> Any:
         store = self._get_store(agent_id)
         memory = store.get(key)
         if memory:

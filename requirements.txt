@@ -17,3 +17,9 @@ sentence-transformers
 matplotlib
 charset_normalizer
 requests
+pandas
+akshare
+chromadb
+fastapi
+uvicorn
+pydantic
