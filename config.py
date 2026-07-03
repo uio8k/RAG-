@@ -23,6 +23,34 @@ class MemoryConfig:
 
     # --- 嵌入模型 ---
     embedding_model: str = "all-MiniLM-L6-v2"
+    # 本地模型路径（优先使用，ModelScope 下载后自动检测）
+    local_model_path: str = ""
+
+    def _find_local_model(self) -> str | None:
+        """自动查找本地已下载的模型"""
+        candidates = [
+            self.local_model_path,
+            os.environ.get("EMBEDDING_MODEL_PATH", ""),
+            os.path.expanduser(
+                "~/.cache/modelscope/sentence-transformers/all-MiniLM-L6-v2"
+            ),
+            os.path.expanduser(
+                "~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2"
+            ),
+        ]
+        for p in candidates:
+            if p and Path(p).is_dir():
+                return p
+        return None
+
+    def get_embedding_model(self) -> str:
+        """返回可用的嵌入模型路径或名称"""
+        local = self._find_local_model()
+        if local:
+            print(f"--- [Config] 使用本地嵌入模型: {local} ---")
+            return local
+        print(f"--- [Config] 使用远程嵌入模型: {self.embedding_model} ---")
+        return self.embedding_model
 
     # --- 记忆整合 ---
     consolidation_trigger_count: int = 20

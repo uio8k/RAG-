@@ -9,10 +9,17 @@ class VectorMemory:
     _encoder = None
 
     def __init__(self):
-        # 模型只加载一次（类级别共享，避免重复加载 80MB 模型）
+        # 模型只加载一次（类级别共享，优先使用本地模型）
         if VectorMemory._encoder is None:
-            print("--- [Memory] 首次加载嵌入模型 all-MiniLM-L6-v2 (仅此一次) ---")
-            VectorMemory._encoder = SentenceTransformer('all-MiniLM-L6-v2')
+            try:
+                from config import memory_config
+                model_path = memory_config.get_embedding_model()
+                print(f"--- [Memory] 首次加载嵌入模型 (仅此一次): {model_path} ---")
+                VectorMemory._encoder = SentenceTransformer(model_path)
+            except Exception as e:
+                print(f"--- [Memory] ⚠ 嵌入模型加载失败: {e} ---")
+                print("--- [Memory] 将使用关键词匹配模式（功能降级） ---")
+                VectorMemory._encoder = None
         self.encoder = VectorMemory._encoder
 
         # FAISS 索引 (维度 384)
@@ -88,11 +95,13 @@ class VectorMemory:
             self.metadata.append(desc)
 
         if documents:
-            # 向量化处理
-            print(f"--- [Memory] 正在编码 {len(documents)} 条财务记录为向量... ---")
-            embeddings = self.encoder.encode(documents)
-            self.index.add(np.array(embeddings).astype('float32'))
-            print(f"--- [Memory] 知识库构建完毕，共加载 {len(documents)} 条符合时间条件的记录 ---")
+            if self.encoder is not None:
+                print(f"--- [Memory] 正在编码 {len(documents)} 条财务记录为向量... ---")
+                embeddings = self.encoder.encode(documents)
+                self.index.add(np.array(embeddings).astype('float32'))
+                print(f"--- [Memory] 知识库构建完毕，共加载 {len(documents)} 条符合时间条件的记录 ---")
+            else:
+                print(f"--- [Memory] 嵌入模型不可用，跳过向量化 ({len(documents)} 条记录供关键词匹配) ---")
         else:
             print("--- [Warning] 该时间点之前没有任何财务数据记录 ---")
 
@@ -111,13 +120,20 @@ class VectorMemory:
         """
         if self.index.ntotal == 0:
             return "本地知识库中暂无符合当前时间条件的财务信息。"
-            
-        # 将用户提问转化为向量
-        query_vec = self.encoder.encode([user_query])
-        
-        # 在索引中搜索最相似的 k 个结果
-        D, I = self.index.search(np.array(query_vec).astype('float32'), k)
-        
-        # 还原为文本
-        results = [self.metadata[i] for i in I[0] if i != -1]
-        return "\n".join(results)
+
+        # 有编码器用向量检索，否则降级为关键词匹配
+        if self.encoder is not None:
+            query_vec = self.encoder.encode([user_query])
+            D, I = self.index.search(np.array(query_vec).astype('float32'), k)
+            results = [self.metadata[i] for i in I[0] if i != -1]
+        else:
+            keywords = user_query.lower().split()
+            scored = []
+            for i, doc in enumerate(self.metadata):
+                score = sum(1 for kw in keywords if kw in doc.lower())
+                if score > 0:
+                    scored.append((score, i))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            results = [self.metadata[i] for _, i in scored[:k]]
+
+        return "\n".join(results) if results else "本地知识库中暂无符合当前时间条件的财务信息。"

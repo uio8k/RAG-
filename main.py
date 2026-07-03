@@ -1,4 +1,7 @@
 """Agent Memory Hub + RAG 主入口"""
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from memory.manager import MemoryManager
 from memory.short_term import ShortTermMemory

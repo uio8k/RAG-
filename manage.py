@@ -2,6 +2,10 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from dotenv import load_dotenv
+
+# 加载 .env 文件（必须在其他导入之前）
+load_dotenv()
 
 
 def main():

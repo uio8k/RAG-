@@ -33,9 +33,12 @@ class LongTermMemory(BaseMemory):
         self._init_sqlite()
 
     def _get_embedder(self):
-        """延迟加载 SentenceTransformer，避免初始化时必须联网"""
+        """延迟加载 SentenceTransformer，优先使用本地模型"""
         if self._embedder is None:
-            self._embedder = SentenceTransformer(self._embedding_model)
+            # 自动检测本地模型路径
+            from config import memory_config
+            model_path = memory_config.get_embedding_model()
+            self._embedder = SentenceTransformer(model_path)
         return self._embedder
 
     def _init_sqlite(self):
